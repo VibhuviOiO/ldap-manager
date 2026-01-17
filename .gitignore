@@ -1,0 +1,60 @@
+# Configuration files with passwords
+config.yml
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+dist-ssr/
+*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Password cache
+backend/.cache/
+.cache/
+
+# Build artifacts
+*.egg-info/
+build/
+*.whl
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+.temp/
+tmp/
+
+# OS
+Thumbs.db
+.Spotlight-V100
+.Trashes
