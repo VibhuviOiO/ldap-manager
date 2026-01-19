@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil, Trash2, Key } from 'lucide-react'
 import { Button } from './ui/button'
 
 interface Column {
@@ -18,12 +18,44 @@ interface DirectoryTableProps {
   onPageChange: (page: number) => void
   columns?: Column[]
   visibleColumns?: string[]
+  onDelete?: (dn: string) => void
+  onEdit?: (entry: any) => void
+  onChangePassword?: (entry: any) => void
+  readonly?: boolean
 }
 
 export default function DirectoryTable({
-  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, columns, visibleColumns
+  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, readonly
 }: DirectoryTableProps) {
-  if (loading) return <p className="text-muted-foreground">Loading entries...</p>
+  if (loading) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b">
+              {[1, 2, 3, 4].map(i => (
+                <th key={i} className="text-left p-3">
+                  <div className="h-4 bg-muted rounded animate-pulse w-24"></div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2, 3, 4, 5].map(row => (
+              <tr key={row} className="border-b">
+                {[1, 2, 3, 4].map(col => (
+                  <td key={col} className="p-3">
+                    <div className="h-4 bg-muted rounded animate-pulse" style={{ width: `${60 + Math.random() * 40}%` }}></div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+  
   if (entries.length === 0) return <p className="text-muted-foreground">No entries found</p>
 
   const isColumnVisible = (colName: string) => {
@@ -33,6 +65,43 @@ export default function DirectoryTable({
 
   const renderUserCell = (entry: any, colName: string) => {
     const value = entry[colName]
+    
+    // Special rendering for full name - combine cn and sn
+    if (colName === 'cn') {
+      const firstName = entry.cn || ''
+      const lastName = entry.sn || ''
+      return lastName ? `${firstName} ${lastName}` : firstName
+    }
+    
+    // Special rendering for shadowLastChange - show password age
+    if (colName === 'shadowLastChange' && value) {
+      const days = parseInt(value)
+      const passwordDate = new Date(1970, 0, 1)
+      passwordDate.setDate(passwordDate.getDate() + days)
+      const today = new Date()
+      const ageInDays = Math.floor((today.getTime() - passwordDate.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (ageInDays === 0) return 'Today'
+      if (ageInDays === 1) return '1 day ago'
+      if (ageInDays < 30) return `${ageInDays} days ago`
+      if (ageInDays < 365) {
+        const months = Math.floor(ageInDays / 30)
+        return `${months} month${months > 1 ? 's' : ''} ago`
+      }
+      const years = Math.floor(ageInDays / 365)
+      return `${years} year${years > 1 ? 's' : ''} ago`
+    }
+    
+    // Special rendering for LDAP timestamps (format: YYYYMMDDHHmmssZ)
+    if ((colName === 'createTimestamp' || colName === 'modifyTimestamp') && value) {
+      const year = value.substring(0, 4)
+      const month = value.substring(4, 6)
+      const day = value.substring(6, 8)
+      const hour = value.substring(8, 10)
+      const min = value.substring(10, 12)
+      const date = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`)
+      return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
     
     // Special rendering for specific columns
     if (colName === 'objectClass') {
@@ -55,6 +124,17 @@ export default function DirectoryTable({
 
   const renderGroupCell = (entry: any, colName: string) => {
     const value = entry[colName]
+    
+    // Special rendering for LDAP timestamps
+    if ((colName === 'createTimestamp' || colName === 'modifyTimestamp') && value) {
+      const year = value.substring(0, 4)
+      const month = value.substring(4, 6)
+      const day = value.substring(6, 8)
+      const hour = value.substring(8, 10)
+      const min = value.substring(10, 12)
+      const date = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`)
+      return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
     
     // Special rendering for members count
     if (colName === 'members') {
@@ -93,12 +173,16 @@ export default function DirectoryTable({
               {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
                 <th key={col.name} className="text-left p-3 font-medium text-sm">{col.label}</th>
               ))}
+              {directoryView === 'users' && columns && !readonly && (
+                <th className="text-right p-3 font-medium text-sm">Actions</th>
+              )}
               {directoryView === 'users' && !columns && (
                 <>
                   <th className="text-left p-3 font-medium text-sm">Username</th>
                   <th className="text-left p-3 font-medium text-sm">Full Name</th>
                   <th className="text-left p-3 font-medium text-sm">Email</th>
                   <th className="text-left p-3 font-medium text-sm">Type</th>
+                  {!readonly && <th className="text-right p-3 font-medium text-sm">Actions</th>}
                 </>
               )}
               {directoryView === 'groups' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
@@ -136,12 +220,66 @@ export default function DirectoryTable({
                 {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
                   <td key={col.name} className="p-3 text-sm">{renderUserCell(entry, col.name)}</td>
                 ))}
+                {directoryView === 'users' && columns && !readonly && (
+                  <td className="p-3 text-sm text-right">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => onChangePassword?.(entry)}
+                        className="p-1.5 hover:bg-accent rounded transition-colors"
+                        title="Change password"
+                      >
+                        <Key className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                      <button
+                        onClick={() => onEdit?.(entry)}
+                        className="p-1.5 hover:bg-accent rounded transition-colors"
+                        title="Edit user"
+                      >
+                        <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                      <button
+                        onClick={() => onDelete?.(entry.dn)}
+                        className="p-1.5 hover:bg-destructive/10 rounded transition-colors"
+                        title="Delete user"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </button>
+                    </div>
+                  </td>
+                )}
                 {directoryView === 'users' && !columns && (
                   <>
                     <td className="p-3 text-sm font-medium">{entry.uid || entry.cn || '-'}</td>
                     <td className="p-3 text-sm">{entry.cn || '-'}</td>
                     <td className="p-3 text-sm text-muted-foreground">{entry.mail || '-'}</td>
                     <td className="p-3 text-sm">{renderUserCell(entry, 'objectClass')}</td>
+                    {!readonly && (
+                      <td className="p-3 text-sm text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => onChangePassword?.(entry)}
+                            className="p-1.5 hover:bg-accent rounded transition-colors"
+                            title="Change password"
+                          >
+                            <Key className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                          </button>
+                          <button
+                            onClick={() => onEdit?.(entry)}
+                            className="p-1.5 hover:bg-accent rounded transition-colors"
+                            title="Edit user"
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                          </button>
+                          <button
+                            onClick={() => onDelete?.(entry.dn)}
+                            className="p-1.5 hover:bg-destructive/10 rounded transition-colors"
+                            title="Delete user"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </>
                 )}
                 {directoryView === 'groups' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (

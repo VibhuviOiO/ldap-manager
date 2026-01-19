@@ -8,6 +8,8 @@ import DirectoryTable from './DirectoryTable'
 import MonitoringView from './MonitoringView'
 import ActivityLogView from './ActivityLogView'
 import CreateUserDialog from './CreateUserDialog'
+import EditUserDialog from './EditUserDialog'
+import ChangePasswordDialog from './ChangePasswordDialog'
 import ColumnSettings from './ColumnSettings'
 import axios from 'axios'
 
@@ -30,6 +32,10 @@ export default function ClusterDetails() {
   const [totalEntries, setTotalEntries] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<any>(null)
+  const [passwordEntry, setPasswordEntry] = useState<any>(null)
   const [clusterConfig, setClusterConfig] = useState<any>(null)
   const [tableColumns, setTableColumns] = useState<Record<string, Column[]>>({})
   const [visibleColumns, setVisibleColumns] = useState<Record<string, string[]>>({})
@@ -42,6 +48,8 @@ export default function ClusterDetails() {
 
   useEffect(() => {
     if (['users', 'groups', 'ous', 'all'].includes(activeView)) {
+      setLoading(true)
+      setEntries([])
       const timer = setTimeout(() => {
         loadClusterData()
       }, 500)
@@ -134,6 +142,29 @@ export default function ClusterDetails() {
     }
   }
 
+  const handleDelete = async (dn: string) => {
+    if (!confirm(`Delete user ${dn}?`)) return
+    
+    try {
+      await axios.delete('/api/entries/delete', {
+        params: { cluster_name: clusterName, dn }
+      })
+      loadClusterData()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete user')
+    }
+  }
+
+  const handleEdit = (entry: any) => {
+    setEditingEntry(entry)
+    setShowEditDialog(true)
+  }
+
+  const handleChangePassword = (entry: any) => {
+    setPasswordEntry(entry)
+    setShowPasswordDialog(true)
+  }
+
   const isDirectoryView = ['users', 'groups', 'ous', 'all'].includes(activeView)
   const getStatusClass = () => {
     if (monitoring?.status === 'healthy') return 'bg-primary/10 text-primary'
@@ -141,36 +172,50 @@ export default function ClusterDetails() {
     return 'bg-destructive/10 text-destructive'
   }
   const getNavClass = (view: string) => {
-    return `flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-      activeView === view ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+    return `flex items-center space-x-2 px-6 py-3.5 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
+      activeView === view 
+        ? 'border-primary text-primary bg-primary/5' 
+        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/50'
     }`
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h2 className="text-3xl font-bold">{decodeURIComponent(clusterName || '')}</h2>
-            <div className="flex items-center space-x-2 mt-1">
-              <p className="text-sm text-muted-foreground">LDAP Directory</p>
-              {monitoring && (
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getStatusClass()}`}>
-                  {monitoring.status === 'healthy' && '● Healthy'}
-                  {monitoring.status === 'warning' && '● Warning'}
-                  {monitoring.status === 'error' && '● Error'}
-                </span>
-              )}
-            </div>
+    <div className="space-y-0">
+      <div className="bg-card border-b sticky top-[73px] z-40">
+        <div className="container mx-auto px-6">
+          <div className="flex overflow-x-auto scrollbar-hide">
+            <button onClick={() => setActiveView('users')} className={getNavClass('users')}>
+              <Users className="h-4 w-4" />
+              <span>Users</span>
+            </button>
+            <button onClick={() => setActiveView('groups')} className={getNavClass('groups')}>
+              <FolderTree className="h-4 w-4" />
+              <span>Groups</span>
+            </button>
+            <button onClick={() => setActiveView('ous')} className={getNavClass('ous')}>
+              <Building2 className="h-4 w-4" />
+              <span>Organizational Units</span>
+            </button>
+            <button onClick={() => setActiveView('all')} className={getNavClass('all')}>
+              <DatabaseIcon className="h-4 w-4" />
+              <span>All Entries</span>
+            </button>
+            <button onClick={() => setActiveView('monitoring')} className={getNavClass('monitoring')}>
+              <BarChart3 className="h-4 w-4" />
+              <span>Monitoring</span>
+            </button>
+            <button onClick={() => setActiveView('activity')} className={getNavClass('activity')}>
+              <Activity className="h-4 w-4" />
+              <span>Activity Log</span>
+            </button>
           </div>
         </div>
       </div>
 
+      <div className="container mx-auto px-6 py-6 space-y-6">
+
       {monitoring && monitoring.status !== 'healthy' && (
-        <Card className="border-l-4 border-l-destructive">
+        <Card className="border-l-4 border-l-destructive shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start space-x-3">
               <div className="text-destructive mt-0.5">⚠</div>
@@ -183,37 +228,8 @@ export default function ClusterDetails() {
         </Card>
       )}
 
-      <div className="bg-card border rounded-lg">
-        <div className="flex overflow-x-auto">
-          <button onClick={() => setActiveView('users')} className={getNavClass('users')}>
-            <Users className="h-4 w-4" />
-            <span>Users</span>
-          </button>
-          <button onClick={() => setActiveView('groups')} className={getNavClass('groups')}>
-            <FolderTree className="h-4 w-4" />
-            <span>Groups</span>
-          </button>
-          <button onClick={() => setActiveView('ous')} className={getNavClass('ous')}>
-            <Building2 className="h-4 w-4" />
-            <span>Organizational Units</span>
-          </button>
-          <button onClick={() => setActiveView('all')} className={getNavClass('all')}>
-            <DatabaseIcon className="h-4 w-4" />
-            <span>All Entries</span>
-          </button>
-          <button onClick={() => setActiveView('monitoring')} className={getNavClass('monitoring')}>
-            <BarChart3 className="h-4 w-4" />
-            <span>Monitoring</span>
-          </button>
-          <button onClick={() => setActiveView('activity')} className={getNavClass('activity')}>
-            <Activity className="h-4 w-4" />
-            <span>Activity Log</span>
-          </button>
-        </div>
-      </div>
-
       {isDirectoryView ? (
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>
@@ -261,6 +277,10 @@ export default function ClusterDetails() {
               onPageChange={setPage}
               columns={tableColumns[activeView]}
               visibleColumns={visibleColumns[activeView]}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onChangePassword={handleChangePassword}
+              readonly={clusterConfig?.readonly}
             />
           </CardContent>
         </Card>
@@ -279,6 +299,33 @@ export default function ClusterDetails() {
           onSuccess={() => loadClusterData()}
         />
       )}
+
+      {showEditDialog && editingEntry && (
+        <EditUserDialog
+          open={showEditDialog}
+          onClose={() => {
+            setShowEditDialog(false)
+            setEditingEntry(null)
+          }}
+          clusterName={clusterName || ''}
+          entry={editingEntry}
+          onSuccess={() => loadClusterData()}
+        />
+      )}
+
+      {showPasswordDialog && passwordEntry && (
+        <ChangePasswordDialog
+          open={showPasswordDialog}
+          onClose={() => {
+            setShowPasswordDialog(false)
+            setPasswordEntry(null)
+          }}
+          clusterName={clusterName || ''}
+          entry={passwordEntry}
+          onSuccess={() => loadClusterData()}
+        />
+      )}
+      </div>
     </div>
   )
 }

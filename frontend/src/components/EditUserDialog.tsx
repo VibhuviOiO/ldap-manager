@@ -24,25 +24,25 @@ interface FormConfig {
   fields: FormField[]
 }
 
-interface CreateUserDialogProps {
+interface EditUserDialogProps {
   open: boolean
   onClose: () => void
   clusterName: string
-  baseDn: string
+  entry: any
   onSuccess: () => void
 }
 
-export default function CreateUserDialog({ open, onClose, clusterName, baseDn, onSuccess }: CreateUserDialogProps) {
+export default function EditUserDialog({ open, onClose, clusterName, entry, onSuccess }: EditUserDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [formConfig, setFormConfig] = useState<FormConfig | null>(null)
   const [formData, setFormData] = useState<Record<string, any>>({})
 
   useEffect(() => {
-    if (open) {
+    if (open && entry) {
       loadFormConfig()
     }
-  }, [open])
+  }, [open, entry])
 
   const loadFormConfig = async () => {
     try {
@@ -50,14 +50,13 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
       const config = res.data
       setFormConfig(config)
       
-      // Initialize form data with defaults
+      // Initialize form data with existing entry values
       const initialData: Record<string, any> = {}
       config.fields.forEach((field: FormField) => {
-        if (field.default !== undefined) {
+        if (entry[field.name] !== undefined) {
+          initialData[field.name] = entry[field.name]
+        } else if (field.default !== undefined) {
           initialData[field.name] = field.default
-        } else if (field.auto_generate && field.auto_generate.includes('${uid}')) {
-          // For template-based auto-generation, show placeholder but allow editing
-          initialData[field.name] = ''
         } else {
           initialData[field.name] = ''
         }
@@ -75,38 +74,31 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
     setError('')
 
     try {
-      if (!formConfig) throw new Error('Form not configured')
+      const modifications: Record<string, any> = {}
       
-      const dn = `uid=${formData.uid},${formConfig.base_ou}`
-      const attributes: Record<string, any> = {
-        objectClass: formConfig.object_classes,
-        ...formData
-      }
-
-      // Process auto-generated fields
-      formConfig.fields.forEach((field) => {
-        if (field.auto_generate) {
-          if (field.auto_generate === 'next_uid') {
-            attributes[field.name] = 'auto' // Backend will generate
-          } else if (field.auto_generate.includes('${uid}')) {
-            attributes[field.name] = field.auto_generate.replace('${uid}', formData.uid)
-          } else if (field.auto_generate === 'days_since_epoch') {
-            // Backend will generate
-          }
+      // Only include changed fields
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== entry[key]) {
+          modifications[key] = formData[key]
         }
       })
 
-      await axios.post('/api/entries/create', {
+      if (Object.keys(modifications).length === 0) {
+        setError('No changes detected')
+        setLoading(false)
+        return
+      }
+
+      await axios.put('/api/entries/update', {
         cluster_name: clusterName,
-        dn,
-        attributes
+        dn: entry.dn,
+        modifications
       })
 
       onSuccess()
       onClose()
-      setFormData({})
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create user')
+      setError(err.response?.data?.detail || 'Failed to update user')
     }
     setLoading(false)
   }
@@ -116,7 +108,7 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
       <Sheet open={open} onOpenChange={onClose}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Create New User</SheetTitle>
+            <SheetTitle>Edit User</SheetTitle>
           </SheetHeader>
           <div className="text-sm text-muted-foreground">
             {error || 'Loading form configuration...'}
@@ -130,11 +122,11 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Create New User</SheetTitle>
+          <SheetTitle>Edit User: {entry.uid}</SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-6">
           <div className="grid grid-cols-2 gap-4">
-            {formConfig.fields.map((field) => (
+            {formConfig.fields.filter(field => field.name !== 'userPassword').map((field) => (
               <div key={field.name}>
                 <Label htmlFor={field.name}>
                   {field.label} {field.required && '*'}
@@ -143,7 +135,7 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
                   <Select
                     id={field.name}
                     required={field.required}
-                    disabled={field.readonly}
+                    disabled={field.readonly || field.name === 'uid'}
                     value={formData[field.name] || ''}
                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                   >
@@ -169,19 +161,16 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
                   <Input
                     id={field.name}
                     type={field.type}
-                    required={field.required && !field.auto_generate}
-                    disabled={field.readonly}
+                    required={field.required}
+                    disabled={field.readonly || field.name === 'uid' || field.name === 'uidNumber'}
                     value={formData[field.name] || ''}
                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                    placeholder={field.placeholder || (field.auto_generate?.includes('${uid}') ? field.auto_generate : undefined)}
-                    className={field.readonly ? 'bg-muted text-muted-foreground cursor-not-allowed' : ''}
+                    placeholder={field.placeholder}
+                    className={(field.readonly || field.name === 'uid' || field.name === 'uidNumber') ? 'bg-muted text-muted-foreground cursor-not-allowed' : ''}
                   />
                 )}
-                {field.auto_generate && field.readonly && (
-                  <p className="text-xs text-muted-foreground mt-1">Auto-generated by system</p>
-                )}
-                {field.auto_generate && !field.readonly && field.auto_generate.includes('${uid}') && (
-                  <p className="text-xs text-muted-foreground mt-1">Leave empty to use: {field.auto_generate}</p>
+                {(field.readonly || field.name === 'uid' || field.name === 'uidNumber') && (
+                  <p className="text-xs text-muted-foreground mt-1">Cannot be modified</p>
                 )}
               </div>
             ))}
@@ -198,7 +187,7 @@ export default function CreateUserDialog({ open, onClose, clusterName, baseDn, o
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create User'}
+              {loading ? 'Updating...' : 'Update User'}
             </Button>
           </div>
         </form>
