@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
-import { Database, Home } from 'lucide-react'
+import { Database, Home, Moon, Sun } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import ClusterDetails from './components/ClusterDetails'
 
@@ -10,6 +10,19 @@ function Header() {
   const isClusterPage = location.pathname.startsWith('/cluster/')
   const clusterName = isClusterPage ? decodeURIComponent(location.pathname.split('/cluster/')[1]) : ''
   const [clusterInfo, setClusterInfo] = useState<any>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme')
+    return (saved as 'light' | 'dark') || 'light'
+  })
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
   useEffect(() => {
     if (isClusterPage && clusterName) {

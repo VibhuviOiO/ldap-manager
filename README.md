@@ -257,22 +257,28 @@ npx playwright show-report
 ```
 
 **Test Coverage:**
-- ✅ 75 tests across 3 browsers (100% pass rate)
-- Dashboard: Cluster listing, navigation
-- Cluster Details: View switching, search, pagination
-- User Creation: Form validation, custom fields, dropdowns
-- Column Settings: Show/hide columns, localStorage persistence
-- User Lifecycle: Full E2E create → verify → delete flow
+- ✅ 95 tests across 3 browsers (100% pass rate)
+- Dashboard: Cluster listing, navigation (5 tests)
+- Cluster Details: View switching, search, pagination (8 tests)
+- User Creation: Form validation, custom fields, dropdowns (7 tests)
+- Column Settings: Show/hide columns, localStorage persistence (4 tests)
+- User Lifecycle: Full E2E create → verify → delete flow (3 tests)
+- User Edit: Field updates, validation, disabled fields (11 tests)
+- Password Change: Policy validation, confirmation, shadowLastChange update (11 tests)
+- Complete Lifecycle: Create → edit → password change → delete (5 tests)
 
 **Test Organization:**
 ```
 frontend/tests/e2e/
-├── dashboard.spec.ts           # Dashboard page tests
-├── cluster-details.spec.ts     # Cluster view tests
-├── user-creation.spec.ts       # Form UI tests
-├── user-creation-simple.spec.ts # Form validation only
-├── column-settings.spec.ts     # Column preferences
-└── user-lifecycle.spec.ts      # Full E2E lifecycle
+├── dashboard.spec.ts                # Dashboard page tests (5)
+├── cluster-details.spec.ts          # Cluster view tests (8)
+├── user-creation.spec.ts            # Form UI tests (7)
+├── user-creation-simple.spec.ts     # Form validation only (3)
+├── column-settings.spec.ts          # Column preferences (4)
+├── user-lifecycle.spec.ts           # Full E2E lifecycle (3)
+├── user-edit.spec.ts                # Edit functionality (11)
+├── password-change.spec.ts          # Password change (11)
+└── user-lifecycle-complete.spec.ts  # Complete workflow (5)
 ```
 
 See [TESTING.md](docs/TESTING.md) for detailed testing guide.
@@ -376,8 +382,11 @@ MIT License - See [LICENSE](LICENSE) file
 - [x] User creation with custom schemas
 - [x] Dynamic form configuration (YAML-driven)
 - [x] Column customization and preferences
-- [x] E2E testing with Playwright (75 tests, 100% pass)
-- [ ] User/Group editing
+- [x] E2E testing with Playwright (95 tests, 100% pass)
+- [x] User editing (all fields except uid/uidNumber)
+- [x] Password change with configurable policy
+- [x] Full name display (first + last name)
+- [x] Actions column (change password, edit, delete)
 - [ ] Bulk operations
 - [ ] LDIF import/export
 - [ ] Advanced search filters

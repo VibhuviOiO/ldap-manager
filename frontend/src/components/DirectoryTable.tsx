@@ -16,6 +16,7 @@ interface DirectoryTableProps {
   totalEntries: number
   hasMore: boolean
   onPageChange: (page: number) => void
+  onPageSizeChange?: (size: number) => void
   columns?: Column[]
   visibleColumns?: string[]
   onDelete?: (dn: string) => void
@@ -25,7 +26,7 @@ interface DirectoryTableProps {
 }
 
 export default function DirectoryTable({
-  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, readonly
+  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, onPageSizeChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, readonly
 }: DirectoryTableProps) {
   if (loading) {
     return (
@@ -34,7 +35,7 @@ export default function DirectoryTable({
           <thead>
             <tr className="border-b">
               {[1, 2, 3, 4].map(i => (
-                <th key={i} className="text-left p-3">
+                <th key={i} className="text-left p-2">
                   <div className="h-4 bg-muted rounded animate-pulse w-24"></div>
                 </th>
               ))}
@@ -44,7 +45,7 @@ export default function DirectoryTable({
             {[1, 2, 3, 4, 5].map(row => (
               <tr key={row} className="border-b">
                 {[1, 2, 3, 4].map(col => (
-                  <td key={col} className="p-3">
+                  <td key={col} className="p-2">
                     <div className="h-4 bg-muted rounded animate-pulse" style={{ width: `${60 + Math.random() * 40}%` }}></div>
                   </td>
                 ))}
@@ -166,50 +167,52 @@ export default function DirectoryTable({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b">
+      <div className="border rounded-lg">
+        <div className="overflow-x-auto">
+          <div className="max-h-[600px] overflow-y-auto">
+            <table className="w-full">
+              <thead className="sticky top-0 bg-background border-b">
+                <tr>
               {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                <th key={col.name} className="text-left p-3 font-medium text-sm">{col.label}</th>
+                <th key={col.name} className="text-left p-2 font-medium text-sm">{col.label}</th>
               ))}
               {directoryView === 'users' && columns && !readonly && (
-                <th className="text-right p-3 font-medium text-sm">Actions</th>
+                <th className="text-right p-2 font-medium text-sm">Actions</th>
               )}
               {directoryView === 'users' && !columns && (
                 <>
-                  <th className="text-left p-3 font-medium text-sm">Username</th>
-                  <th className="text-left p-3 font-medium text-sm">Full Name</th>
-                  <th className="text-left p-3 font-medium text-sm">Email</th>
-                  <th className="text-left p-3 font-medium text-sm">Type</th>
-                  {!readonly && <th className="text-right p-3 font-medium text-sm">Actions</th>}
+                  <th className="text-left p-2 font-medium text-sm">Username</th>
+                  <th className="text-left p-2 font-medium text-sm">Full Name</th>
+                  <th className="text-left p-2 font-medium text-sm">Email</th>
+                  <th className="text-left p-2 font-medium text-sm">Type</th>
+                  {!readonly && <th className="text-right p-2 font-medium text-sm">Actions</th>}
                 </>
               )}
               {directoryView === 'groups' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                <th key={col.name} className="text-left p-3 font-medium text-sm">{col.label}</th>
+                <th key={col.name} className="text-left p-2 font-medium text-sm">{col.label}</th>
               ))}
               {directoryView === 'groups' && !columns && (
                 <>
-                  <th className="text-left p-3 font-medium text-sm">Group Name</th>
-                  <th className="text-left p-3 font-medium text-sm">Description</th>
-                  <th className="text-left p-3 font-medium text-sm">Members</th>
+                  <th className="text-left p-2 font-medium text-sm">Group Name</th>
+                  <th className="text-left p-2 font-medium text-sm">Description</th>
+                  <th className="text-left p-2 font-medium text-sm">Members</th>
                 </>
               )}
               {directoryView === 'ous' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                <th key={col.name} className="text-left p-3 font-medium text-sm">{col.label}</th>
+                <th key={col.name} className="text-left p-2 font-medium text-sm">{col.label}</th>
               ))}
               {directoryView === 'ous' && !columns && (
                 <>
-                  <th className="text-left p-3 font-medium text-sm">OU Name</th>
-                  <th className="text-left p-3 font-medium text-sm">Description</th>
-                  <th className="text-left p-3 font-medium text-sm">DN</th>
+                  <th className="text-left p-2 font-medium text-sm">OU Name</th>
+                  <th className="text-left p-2 font-medium text-sm">Description</th>
+                  <th className="text-left p-2 font-medium text-sm">DN</th>
                 </>
               )}
               {directoryView === 'all' && (
                 <>
-                  <th className="text-left p-3 font-medium text-sm">DN</th>
-                  <th className="text-left p-3 font-medium text-sm">Object Class</th>
-                  <th className="text-left p-3 font-medium text-sm">Attributes</th>
+                  <th className="text-left p-2 font-medium text-sm">DN</th>
+                  <th className="text-left p-2 font-medium text-sm">Object Class</th>
+                  <th className="text-left p-2 font-medium text-sm">Attributes</th>
                 </>
               )}
             </tr>
@@ -218,10 +221,10 @@ export default function DirectoryTable({
             {entries.map((entry, idx) => (
               <tr key={idx} className="border-b hover:bg-accent">
                 {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                  <td key={col.name} className="p-3 text-sm">{renderUserCell(entry, col.name)}</td>
+                  <td key={col.name} className="p-2 text-sm">{renderUserCell(entry, col.name)}</td>
                 ))}
                 {directoryView === 'users' && columns && !readonly && (
-                  <td className="p-3 text-sm text-right">
+                  <td className="p-2 text-sm text-right">
                     <div className="flex items-center justify-end space-x-2">
                       <button
                         onClick={() => onChangePassword?.(entry)}
@@ -249,12 +252,12 @@ export default function DirectoryTable({
                 )}
                 {directoryView === 'users' && !columns && (
                   <>
-                    <td className="p-3 text-sm font-medium">{entry.uid || entry.cn || '-'}</td>
-                    <td className="p-3 text-sm">{entry.cn || '-'}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{entry.mail || '-'}</td>
-                    <td className="p-3 text-sm">{renderUserCell(entry, 'objectClass')}</td>
+                    <td className="p-2 text-sm font-medium">{entry.uid || entry.cn || '-'}</td>
+                    <td className="p-2 text-sm">{entry.cn || '-'}</td>
+                    <td className="p-2 text-sm text-muted-foreground">{entry.mail || '-'}</td>
+                    <td className="p-2 text-sm">{renderUserCell(entry, 'objectClass')}</td>
                     {!readonly && (
-                      <td className="p-3 text-sm text-right">
+                      <td className="p-2 text-sm text-right">
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => onChangePassword?.(entry)}
@@ -283,34 +286,34 @@ export default function DirectoryTable({
                   </>
                 )}
                 {directoryView === 'groups' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                  <td key={col.name} className="p-3 text-sm">{renderGroupCell(entry, col.name)}</td>
+                  <td key={col.name} className="p-2 text-sm">{renderGroupCell(entry, col.name)}</td>
                 ))}
                 {directoryView === 'groups' && !columns && (
                   <>
-                    <td className="p-3 text-sm font-medium">{entry.cn || '-'}</td>
-                    <td className="p-3 text-sm">{entry.description || '-'}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{renderGroupCell(entry, 'members')}</td>
+                    <td className="p-2 text-sm font-medium">{entry.cn || '-'}</td>
+                    <td className="p-2 text-sm">{entry.description || '-'}</td>
+                    <td className="p-2 text-sm text-muted-foreground">{renderGroupCell(entry, 'members')}</td>
                   </>
                 )}
                 {directoryView === 'ous' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                  <td key={col.name} className="p-3 text-sm">{renderOuCell(entry, col.name)}</td>
+                  <td key={col.name} className="p-2 text-sm">{renderOuCell(entry, col.name)}</td>
                 ))}
                 {directoryView === 'ous' && !columns && (
                   <>
-                    <td className="p-3 text-sm font-medium">{entry.ou || entry.o || '-'}</td>
-                    <td className="p-3 text-sm">{entry.description || '-'}</td>
-                    <td className="p-3 text-xs font-mono text-muted-foreground">{entry.dn}</td>
+                    <td className="p-2 text-sm font-medium">{entry.ou || entry.o || '-'}</td>
+                    <td className="p-2 text-sm">{entry.description || '-'}</td>
+                    <td className="p-2 text-xs font-mono text-muted-foreground">{entry.dn}</td>
                   </>
                 )}
                 {directoryView === 'all' && (
                   <>
-                    <td className="p-3 text-sm font-mono">{entry.dn}</td>
-                    <td className="p-3 text-sm">
+                    <td className="p-2 text-sm font-mono">{entry.dn}</td>
+                    <td className="p-2 text-sm">
                       <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
                         {entry.objectClass?.[entry.objectClass.length - 1] || 'Unknown'}
                       </span>
                     </td>
-                    <td className="p-3 text-sm text-muted-foreground">
+                    <td className="p-2 text-sm text-muted-foreground">
                       {Object.keys(entry)
                         .filter(k => k !== 'dn' && k !== 'objectClass')
                         .slice(0, 3)
@@ -323,12 +326,28 @@ export default function DirectoryTable({
             ))}
           </tbody>
         </table>
+        </div>
+        </div>
         
-        <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex items-center justify-between p-4 border-t">
           <p className="text-sm text-muted-foreground">
-            Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalEntries)} of {totalEntries} entries
+            Showing {(page - 1) * pageSize + 1} to {(page - 1) * pageSize + entries.length} of {totalEntries} entries
           </p>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+                className="border rounded px-2 py-1 text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
@@ -348,6 +367,7 @@ export default function DirectoryTable({
               Next
               <ChevronRight className="h-4 w-4" />
             </Button>
+            </div>
           </div>
         </div>
       </div>
