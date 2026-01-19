@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Search, Users, FolderTree, Building2, Database as DatabaseIcon, Activity, BarChart3, Plus } from 'lucide-react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -22,7 +22,11 @@ interface Column {
 export default function ClusterDetails() {
   const { clusterName } = useParams<{ clusterName: string }>()
   const navigate = useNavigate()
-  const [activeView, setActiveView] = useState<'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity'>('users')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeView, setActiveView] = useState<'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity'>(() => {
+    const view = searchParams.get('view')
+    return (view as any) || 'users'
+  })
   const [entries, setEntries] = useState<any[]>([])
   const [monitoring, setMonitoring] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -39,6 +43,11 @@ export default function ClusterDetails() {
   const [clusterConfig, setClusterConfig] = useState<any>(null)
   const [tableColumns, setTableColumns] = useState<Record<string, Column[]>>({})
   const [visibleColumns, setVisibleColumns] = useState<Record<string, string[]>>({})
+
+  const handleViewChange = (view: 'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity') => {
+    setActiveView(view)
+    setSearchParams({ view })
+  }
 
   useEffect(() => {
     loadMonitoring()
@@ -184,27 +193,27 @@ export default function ClusterDetails() {
       <div className="bg-card border-b sticky top-[73px] z-40">
         <div className="container mx-auto px-6">
           <div className="flex overflow-x-auto scrollbar-hide">
-            <button onClick={() => setActiveView('users')} className={getNavClass('users')}>
+            <button onClick={() => handleViewChange('users')} className={getNavClass('users')}>
               <Users className="h-4 w-4" />
               <span>Users</span>
             </button>
-            <button onClick={() => setActiveView('groups')} className={getNavClass('groups')}>
+            <button onClick={() => handleViewChange('groups')} className={getNavClass('groups')}>
               <FolderTree className="h-4 w-4" />
               <span>Groups</span>
             </button>
-            <button onClick={() => setActiveView('ous')} className={getNavClass('ous')}>
+            <button onClick={() => handleViewChange('ous')} className={getNavClass('ous')}>
               <Building2 className="h-4 w-4" />
               <span>Organizational Units</span>
             </button>
-            <button onClick={() => setActiveView('all')} className={getNavClass('all')}>
+            <button onClick={() => handleViewChange('all')} className={getNavClass('all')}>
               <DatabaseIcon className="h-4 w-4" />
               <span>All Entries</span>
             </button>
-            <button onClick={() => setActiveView('monitoring')} className={getNavClass('monitoring')}>
+            <button onClick={() => handleViewChange('monitoring')} className={getNavClass('monitoring')}>
               <BarChart3 className="h-4 w-4" />
               <span>Monitoring</span>
             </button>
-            <button onClick={() => setActiveView('activity')} className={getNavClass('activity')}>
+            <button onClick={() => handleViewChange('activity')} className={getNavClass('activity')}>
               <Activity className="h-4 w-4" />
               <span>Activity Log</span>
             </button>
@@ -285,7 +294,7 @@ export default function ClusterDetails() {
           />
         </div>
       ) : activeView === 'monitoring' ? (
-        <MonitoringView clusterName={clusterName || ''} monitoring={monitoring} loading={loading} />
+        <MonitoringView clusterName={clusterName || ''} />
       ) : (
         <ActivityLogView />
       )}

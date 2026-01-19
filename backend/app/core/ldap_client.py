@@ -94,7 +94,8 @@ class LDAPClient:
                         decoded_values.append(v.decode('utf-8'))
                     except:
                         decoded_values.append(str(v))
-                entry[key] = decoded_values if len(decoded_values) > 1 else decoded_values[0]
+                # Keep as list if multiple values, otherwise single value
+                entry[key] = decoded_values
             entries.append(entry)
         return entries
     
