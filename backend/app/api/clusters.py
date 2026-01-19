@@ -133,3 +133,22 @@ async def get_table_columns(cluster_name: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load columns config: {str(e)}")
+
+@router.get("/password-policy/{cluster_name}")
+async def get_password_policy(cluster_name: str):
+    try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == cluster_name), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail=f"Cluster '{cluster_name}' not found")
+        
+        # Default policy if not configured
+        default_policy = {
+            "min_length": 0,
+            "require_confirmation": True
+        }
+        return cluster_config.password_policy or default_policy
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load password policy: {str(e)}")

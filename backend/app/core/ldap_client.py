@@ -119,8 +119,18 @@ class LDAPClient:
     
     def modify(self, dn: str, changes: Dict) -> bool:
         try:
-            mod_list = [(ldap.MOD_REPLACE, k, v if isinstance(v, list) else [v]) 
-                       for k, v in changes.items()]
+            mod_list = []
+            for k, val in changes.items():
+                values = val if isinstance(val, list) else [val]
+                encoded_values = []
+                for v in values:
+                    if isinstance(v, str):
+                        encoded_values.append(v.encode())
+                    elif isinstance(v, (int, float, bool)):
+                        encoded_values.append(str(v).encode())
+                    else:
+                        encoded_values.append(v)
+                mod_list.append((ldap.MOD_REPLACE, k, encoded_values))
             self.conn.modify_s(dn, mod_list)
             return True
         except ldap.LDAPError as e:

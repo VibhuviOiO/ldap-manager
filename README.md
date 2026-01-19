@@ -215,6 +215,68 @@ npm install
 npm run dev
 ```
 
+### Testing
+
+#### E2E Testing with Playwright
+
+The project includes comprehensive end-to-end tests covering:
+- Dashboard navigation
+- Cluster details and views
+- User creation with custom schemas
+- Column settings and preferences
+- Complete user lifecycle (create → verify → delete)
+
+**Setup:**
+```bash
+cd frontend
+npm install
+npx playwright install  # Install browsers
+```
+
+**Run Tests:**
+```bash
+# Run all tests (Chrome, Firefox, Safari)
+npx playwright test
+
+# Run specific browser
+npx playwright test --project=chromium
+npx playwright test --project=firefox
+npx playwright test --project=webkit
+
+# Run with UI (interactive mode)
+npx playwright test --ui
+
+# Run in headed mode (see browser)
+npx playwright test --headed
+
+# Run specific test file
+npx playwright test user-lifecycle.spec.ts
+
+# View HTML report
+npx playwright show-report
+```
+
+**Test Coverage:**
+- ✅ 75 tests across 3 browsers (100% pass rate)
+- Dashboard: Cluster listing, navigation
+- Cluster Details: View switching, search, pagination
+- User Creation: Form validation, custom fields, dropdowns
+- Column Settings: Show/hide columns, localStorage persistence
+- User Lifecycle: Full E2E create → verify → delete flow
+
+**Test Organization:**
+```
+frontend/tests/e2e/
+├── dashboard.spec.ts           # Dashboard page tests
+├── cluster-details.spec.ts     # Cluster view tests
+├── user-creation.spec.ts       # Form UI tests
+├── user-creation-simple.spec.ts # Form validation only
+├── column-settings.spec.ts     # Column preferences
+└── user-lifecycle.spec.ts      # Full E2E lifecycle
+```
+
+See [TESTING.md](docs/TESTING.md) for detailed testing guide.
+
 ### Project Structure
 ```
 ldap-manager/
@@ -311,7 +373,11 @@ MIT License - See [LICENSE](LICENSE) file
 
 ## Roadmap
 
-- [ ] User/Group creation and editing
+- [x] User creation with custom schemas
+- [x] Dynamic form configuration (YAML-driven)
+- [x] Column customization and preferences
+- [x] E2E testing with Playwright (75 tests, 100% pass)
+- [ ] User/Group editing
 - [ ] Bulk operations
 - [ ] LDIF import/export
 - [ ] Advanced search filters

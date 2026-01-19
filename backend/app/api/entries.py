@@ -33,6 +33,11 @@ class EntryUpdate(BaseModel):
     dn: str
     changes: Dict
 
+class EntryUpdateRequest(BaseModel):
+    cluster_name: str
+    dn: str
+    modifications: Dict
+
 @router.get("/search")
 async def search_by_cluster(
     cluster: str = Query(...),
@@ -82,6 +87,9 @@ async def search_by_cluster(
         client = LDAPClient(config)
         client.connect()
         
+        # Request operational attributes (+) along with regular attributes (*)
+        attrs = ['*', '+']  # * = all user attributes, + = all operational attributes
+        
         # Calculate pagination
         cookie = b''
         skip = (page - 1) * page_size
@@ -89,14 +97,14 @@ async def search_by_cluster(
         # For first page, get paginated results
         if page == 1:
             entries, next_cookie, total = client.search(
-                client.config.base_dn, ldap_filter, attrs=None,
+                client.config.base_dn, ldap_filter, attrs=attrs,
                 page_size=page_size, cookie=cookie
             )
         else:
             # For subsequent pages, need to iterate through pages
             # This is a limitation - LDAP pagination doesn't support random access
             entries, next_cookie, total = client.search(
-                client.config.base_dn, ldap_filter, attrs=None,
+                client.config.base_dn, ldap_filter, attrs=attrs,
                 page_size=0, cookie=b''
             )
             # Client-side pagination for pages > 1
@@ -206,18 +214,40 @@ async def create_entry(req: EntryCreateRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/update")
-async def update_entry(req: EntryUpdate):
+async def update_entry(req: EntryUpdateRequest):
     try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == req.cluster_name), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+        
+        if cluster_config.readonly:
+            raise HTTPException(status_code=403, detail="Cluster is read-only")
+        
+        password = get_password(req.cluster_name, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+        
+        host = cluster_config.host or cluster_config.nodes[0]['host']
+        port = cluster_config.port or cluster_config.nodes[0]['port']
+        
         config = LDAPConfig(
-            host=req.host,
-            port=req.port,
-            bind_dn=req.bind_dn,
-            bind_password=req.bind_password,
-            base_dn=req.dn
+            host=host,
+            port=port,
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
         )
+        
+        # If password is being changed, update shadowLastChange
+        if 'userPassword' in req.modifications:
+            from datetime import datetime
+            days_since_epoch = (datetime.now() - datetime(1970, 1, 1)).days
+            req.modifications['shadowLastChange'] = str(days_since_epoch)
+        
         client = LDAPClient(config)
         client.connect()
-        client.modify(req.dn, req.changes)
+        client.modify(req.dn, req.modifications)
         client.disconnect()
         return {"status": "success", "dn": req.dn}
     except Exception as e:
