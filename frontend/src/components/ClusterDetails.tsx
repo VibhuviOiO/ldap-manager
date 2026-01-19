@@ -47,6 +47,7 @@ export default function ClusterDetails() {
   const handleViewChange = (view: 'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity') => {
     setActiveView(view)
     setSearchParams({ view })
+    setPage(1) // Reset to page 1 when changing views
   }
 
   useEffect(() => {
