@@ -239,11 +239,25 @@ async def update_entry(req: EntryUpdateRequest):
             base_dn=cluster_config.base_dn or ''
         )
         
-        # If password is being changed, update shadowLastChange
+        # If password is being changed, update shadowLastChange (only if user has shadowAccount objectClass)
         if 'userPassword' in req.modifications:
-            from datetime import datetime
-            days_since_epoch = (datetime.now() - datetime(1970, 1, 1)).days
-            req.modifications['shadowLastChange'] = str(days_since_epoch)
+            # Check if user has shadowAccount objectClass
+            client_temp = LDAPClient(config)
+            client_temp.connect()
+            try:
+                user_entry, _, _ = client_temp.search(req.dn, "(objectClass=*)", scope=ldap.SCOPE_BASE, attrs=['objectClass'])
+                if user_entry and 'objectClass' in user_entry[0]:
+                    object_classes = user_entry[0]['objectClass']
+                    if isinstance(object_classes, str):
+                        object_classes = [object_classes]
+                    if 'shadowAccount' in object_classes:
+                        from datetime import datetime
+                        days_since_epoch = (datetime.now() - datetime(1970, 1, 1)).days
+                        req.modifications['shadowLastChange'] = str(days_since_epoch)
+            except:
+                pass  # If we can't check, don't add shadowLastChange
+            finally:
+                client_temp.disconnect()
         
         client = LDAPClient(config)
         client.connect()
