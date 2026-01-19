@@ -64,7 +64,9 @@ export default function Dashboard() {
         })
       }
       setClusterStatuses(statuses)
-    } catch (err) {
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || 'Failed to load clusters'
+      setError(errorMsg)
       console.error('Failed to load clusters', err)
     }
   }
@@ -111,11 +113,34 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-foreground">LDAP Clusters</h2>
-        <p className="text-muted-foreground">Manage multiple LDAP clusters</p>
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h2 className="text-4xl font-bold text-foreground">LDAP Clusters</h2>
+        <p className="text-lg text-muted-foreground">Manage and monitor your directory services</p>
       </div>
+
+      {error && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-destructive/10 rounded-lg">
+                <XCircle className="h-5 w-5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-destructive mb-1">Configuration Error</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
+                {error.includes('not found') && (
+                  <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Please create <code className="bg-background px-2 py-1 rounded text-xs font-mono">config.yml</code> from <code className="bg-background px-2 py-1 rounded text-xs font-mono">config.example.yml</code>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {clusters.length === 0 ? (
         <Card>
@@ -124,25 +149,37 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-6">
           {clusters.map(cluster => {
             const status = clusterStatuses.get(cluster.name)
             return (
-              <Card key={cluster.name}>
-                <CardHeader>
+              <Card key={cluster.name} className="hover:shadow-lg transition-all duration-200 border-2">
+                <CardHeader className="pb-4">
                   <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Database className="h-5 w-5 text-primary" />
-                      <span>{cluster.name}</span>
-                      {status?.passwordCached && (
-                        <CheckCircle className="h-4 w-4 text-primary" />
-                      )}
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2.5 bg-primary/10 rounded-xl">
+                        <Database className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xl">{cluster.name}</span>
+                          {status?.passwordCached && (
+                            <div className="flex items-center space-x-1 px-2 py-1 bg-primary/10 rounded-full">
+                              <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-xs font-medium text-primary">Connected</span>
+                            </div>
+                          )}
+                        </div>
+                        {cluster.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{cluster.description}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex space-x-2">
                       {status?.passwordCached ? (
                         <Button 
                           onClick={() => navigate(`/cluster/${encodeURIComponent(cluster.name)}`)}
-                          variant="default"
+                          className="shadow-sm"
                         >
                           View Cluster <ArrowRight className="h-4 w-4 ml-1" />
                         </Button>
@@ -151,6 +188,7 @@ export default function Dashboard() {
                           onClick={() => handleConnect(cluster.name)}
                           disabled={loading}
                           variant="outline"
+                          className="border-2"
                         >
                           Setup Password
                         </Button>
@@ -158,16 +196,10 @@ export default function Dashboard() {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center space-x-2 text-muted-foreground">
-                      <Server className="h-4 w-4" />
-                      <span>{cluster.host || `${cluster.nodes.length} nodes`}</span>
-                      <span>:{cluster.port}</span>
-                    </div>
-                    {cluster.description && (
-                      <p className="text-muted-foreground">{cluster.description}</p>
-                    )}
+                <CardContent className="pt-0">
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2.5 rounded-lg">
+                    <Server className="h-4 w-4" />
+                    <span className="font-mono">{cluster.host || `${cluster.nodes.length} nodes`}:{cluster.port}</span>
                   </div>
                 </CardContent>
               </Card>

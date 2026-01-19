@@ -13,6 +13,8 @@ class LDAPClusterConfig:
         self.bind_password = data.get("bind_password")
         self.readonly = data.get("readonly", False)
         self.description = data.get("description", "")
+        self.user_creation_form = data.get("user_creation_form")
+        self.table_columns = data.get("table_columns")
 
 def load_config() -> List[LDAPClusterConfig]:
     config_path = Path("/app/config.yml")

@@ -135,16 +135,68 @@ async def search_entries(req: SearchRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+class EntryCreateRequest(BaseModel):
+    cluster_name: str
+    dn: str
+    attributes: Dict
+
 @router.post("/create")
-async def create_entry(req: EntryCreate):
+async def create_entry(req: EntryCreateRequest):
     try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == req.cluster_name), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+        
+        if cluster_config.readonly:
+            raise HTTPException(status_code=403, detail="Cluster is read-only")
+        
+        password = get_password(req.cluster_name, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+        
+        host = cluster_config.host or cluster_config.nodes[0]['host']
+        port = cluster_config.port or cluster_config.nodes[0]['port']
+        
         config = LDAPConfig(
-            host=req.host,
-            port=req.port,
-            bind_dn=req.bind_dn,
-            bind_password=req.bind_password,
-            base_dn=req.dn
+            host=host,
+            port=port,
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
         )
+        
+        # Process auto-generated fields from form config
+        form_config = cluster_config.user_creation_form
+        if form_config:
+            # Auto-generate uidNumber if needed
+            if 'uidNumber' not in req.attributes or req.attributes['uidNumber'] == 'auto':
+                client_temp = LDAPClient(config)
+                client_temp.connect()
+                user_count = client_temp.get_entry_count(
+                    form_config.get('base_ou', config.base_dn),
+                    "(objectClass=posixAccount)"
+                )
+                client_temp.disconnect()
+                req.attributes['uidNumber'] = str(2000 + user_count)
+            
+            # Process auto_generate templates
+            for field in form_config.get('fields', []):
+                field_name = field['name']
+                auto_gen = field.get('auto_generate')
+                
+                # Skip if field has a real value (not empty/null)
+                if field_name in req.attributes and req.attributes[field_name] not in ['', None, 'auto']:
+                    continue
+                
+                if auto_gen:
+                    if auto_gen == 'days_since_epoch':
+                        from datetime import datetime
+                        req.attributes[field_name] = str((datetime.now() - datetime(1970, 1, 1)).days)
+                    elif '${uid}' in auto_gen:
+                        uid = req.attributes.get('uid', '')
+                        req.attributes[field_name] = auto_gen.replace('${uid}', uid)
+        
         client = LDAPClient(config)
         client.connect()
         client.add(req.dn, req.attributes)
@@ -173,20 +225,33 @@ async def update_entry(req: EntryUpdate):
 
 @router.delete("/delete")
 async def delete_entry(
-    host: str = Query(...),
-    port: int = Query(389),
-    bind_dn: str = Query(...),
-    bind_password: str = Query(...),
+    cluster_name: str = Query(...),
     dn: str = Query(...)
 ):
     try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == cluster_name), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+        
+        if cluster_config.readonly:
+            raise HTTPException(status_code=403, detail="Cluster is read-only")
+        
+        password = get_password(cluster_name, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+        
+        host = cluster_config.host or cluster_config.nodes[0]['host']
+        port = cluster_config.port or cluster_config.nodes[0]['port']
+        
         config = LDAPConfig(
             host=host,
             port=port,
-            bind_dn=bind_dn,
-            bind_password=bind_password,
-            base_dn=dn
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
         )
+        
         client = LDAPClient(config)
         client.connect()
         client.delete(dn)

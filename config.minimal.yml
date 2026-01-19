@@ -1,0 +1,42 @@
+# Minimal Configuration Example
+# Perfect for standard LDAP servers - no customization needed!
+
+clusters:
+  # Example 1: Simple single-node LDAP
+  - name: "Production LDAP"
+    host: "ldap.company.com"
+    port: 389
+    bind_dn: "cn=admin,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"
+    description: "Main production LDAP server"
+    readonly: false
+
+  # Example 2: Development LDAP
+  - name: "Development LDAP"
+    host: "ldap-dev.company.com"
+    port: 389
+    bind_dn: "cn=admin,dc=dev,dc=company,dc=com"
+    base_dn: "dc=dev,dc=company,dc=com"
+    description: "Development environment"
+    readonly: true  # Read-only access
+
+  # Example 3: Multi-master cluster
+  - name: "HA LDAP Cluster"
+    nodes:
+      - host: "ldap1.company.com"
+        port: 389
+      - host: "ldap2.company.com"
+        port: 389
+      - host: "ldap3.company.com"
+        port: 389
+    bind_dn: "cn=admin,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"
+    description: "High-availability LDAP cluster"
+    readonly: false
+
+# That's it! No need to configure:
+# - Table columns (auto-detected from LDAP)
+# - User creation forms (use default LDAP attributes)
+# - Custom schemas (automatically discovered)
+#
+# Users can customize column visibility via the "Columns" button in the UI

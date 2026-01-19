@@ -118,6 +118,9 @@ Create `.env` file (optional):
 ```bash
 FRONTEND_PORT=5173
 BACKEND_PORT=8000
+
+# Customize footer text (HTML allowed)
+VITE_FOOTER_TEXT='LDAP Manager • Built by <a href="https://vibhuvioio.com" target="_blank" class="text-primary hover:underline">Vibhuvi OiO</a>'
 ```
 
 ## Usage

@@ -7,6 +7,7 @@ services:
       - "5173:5173"
     environment:
       - PYTHONUNBUFFERED=1
+      - VITE_FOOTER_TEXT=${VITE_FOOTER_TEXT:-LDAP Manager • Built by <a href="https://vibhuvioio.com" target="_blank" class="text-primary hover:underline">Vibhuvi OiO</a>}
     volumes:
       - ./backend/app:/app/app
       - ./frontend/src:/frontend/src
@@ -14,11 +15,11 @@ services:
       - ./config.yml:/app/config.yml:ro
     networks:
       - ldap-network
-      - docker-openldap_ldap-network
+      - openldap-docker_ldap-network
 
 networks:
   ldap-network:
     driver: bridge
-  docker-openldap_ldap-network:
-    name: docker-openldap_ldap-network
+  openldap-docker_ldap-network:
+    name: openldap-docker_ldap-network
     external: true

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-PX6NFGMV');</script>
+    <!-- End Google Tag Manager -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LDAP Manager - Modern Web Interface for OpenLDAP</title>
+    <meta name="description" content="Modern, lightweight web interface for managing OpenLDAP servers with multi-cluster support, server-side pagination, custom schema detection, and real-time monitoring. Open source LDAP management tool.">
+    <meta name="keywords" content="ldap manager, openldap ui, ldap web interface, ldap management, ldap gui, directory management, openldap admin, ldap browser, ldap client, multi-cluster ldap">
+    <meta name="author" content="Vibhuvi OiO">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://vibhuvioio.com/ldap-manager/">
+    <meta property="og:title" content="LDAP Manager - Modern Web Interface for OpenLDAP">
+    <meta property="og:description" content="Modern, lightweight web interface for managing OpenLDAP servers with multi-cluster support, server-side pagination, and custom schema detection.">
+    <meta property="og:image" content="https://vibhuvioio.com/ldap-manager/img/ldap-manager.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://vibhuvioio.com/ldap-manager/">
+    <meta property="twitter:title" content="LDAP Manager - Modern Web Interface for OpenLDAP">
+    <meta property="twitter:description" content="Modern, lightweight web interface for managing OpenLDAP servers with multi-cluster support, server-side pagination, and custom schema detection.">
+    <meta property="twitter:image" content="https://vibhuvioio.com/ldap-manager/img/ldap-manager.png">
+    
+    <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PX6NFGMV"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo">🗂️</span>
+                <span class="brand-name">LDAP Manager</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#installation">Installation</a>
+                <a href="#docs">Documentation</a>
+                <a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <h1>LDAP Manager</h1>
+            <p class="subtitle">Modern, lightweight web interface for managing your OpenLDAP servers</p>
+            <div class="hero-buttons">
+                <a href="#installation" class="btn btn-primary">Get Started</a>
+                <a href="getting-started.html" class="btn btn-secondary">Documentation</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <div class="container">
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🗂️</div>
+                    <h3>Directory Management</h3>
+                    <p>Browse, search, and manage LDAP entries with an intuitive interface</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Multi-Cluster Support</h3>
+                    <p>Connect and manage multiple LDAP servers from a single interface</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>Server-Side Pagination</h3>
+                    <p>Efficient handling of large directories using LDAP Simple Paged Results (RFC 2696)</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Server-Side Search</h3>
+                    <p>Fast LDAP filter-based search across uid, cn, mail, and sn attributes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Custom Schema Support</h3>
+                    <p>Automatically detects and displays custom objectClasses and attributes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Real-Time Monitoring</h3>
+                    <p>View cluster health status, connection metrics, and operation statistics</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="installation" class="installation">
+        <div class="container">
+            <h2>Quick Start</h2>
+            <div class="install-methods">
+                <div class="install-card">
+                    <h3>Docker Run</h3>
+                    <pre><code>docker run -d \
+  -p 5173:5173 \
+  -p 8000:8000 \
+  -v ./config.yml:/app/config.yml \
+  ghcr.io/vibhuvioio/ldap-manager:latest</code></pre>
+                </div>
+                <div class="install-card">
+                    <h3>Docker Compose</h3>
+                    <pre><code>version: '3.8'
+services:
+  ldap-manager:
+    image: ghcr.io/vibhuvioio/ldap-manager:latest
+    ports:
+      - "5173:5173"
+      - "8000:8000"
+    volumes:
+      - ./config.yml:/app/config.yml</code></pre>
+                </div>
+            </div>
+            <div class="install-note">
+                <p>Access the UI at <code>http://localhost:5173</code></p>
+                <p><strong>📦 Available Versions:</strong> <a href="https://github.com/VibhuviOiO/ldap-manager/pkgs/container/ldap-manager" target="_blank">View all versions on GitHub Container Registry</a></p>
+            </div>
+
+            <div class="install-note">
+                <p><strong>Config file note:</strong> Create <code>config.yml</code> with your LDAP cluster configurations. See <a href="configuration.html">Configuration Guide</a> for details.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="docs" class="documentation">
+        <div class="container">
+            <h2>Documentation</h2>
+            <div class="doc-grid">
+                <a href="getting-started.html" class="doc-card">
+                    <h3>🚀 Getting Started</h3>
+                    <p>Installation and basic setup guide</p>
+                </a>
+                <a href="configuration.html" class="doc-card">
+                    <h3>⚙️ Configuration</h3>
+                    <p>Configure LDAP clusters and settings</p>
+                </a>
+                <a href="features.html" class="doc-card">
+                    <h3>✨ Features Guide</h3>
+                    <p>Explore all available features</p>
+                </a>
+                <a href="api.html" class="doc-card">
+                    <h3>🔌 API Reference</h3>
+                    <p>Backend API endpoints documentation</p>
+                </a>
+                <a href="security.html" class="doc-card">
+                    <h3>🛡️ Security</h3>
+                    <p>Password caching and security best practices</p>
+                </a>
+                <a href="development.html" class="doc-card">
+                    <h3>💻 Development</h3>
+                    <p>Contributing and development setup</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>LDAP Manager</h4>
+                    <p>Modern web interface for OpenLDAP management</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Links</h4>
+                    <a href="https://github.com/vibhuvioio/ldap-manager">GitHub</a>
+                    <a href="getting-started.html">Documentation</a>
+                    <a href="https://github.com/vibhuvioio/openldap-docker">OpenLDAP Docker</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="https://www.openldap.org/doc/">OpenLDAP Documentation</a>
+                    <a href="https://ldap.com/">LDAP.com</a>
+                    <a href="https://tools.ietf.org/html/rfc4511">LDAP RFC 4511</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Developed by <a href="https://vibhuvioio.com" target="_blank">Vibhuvi OiO</a> • Founded by <a href="https://jinnabalu.com" target="_blank">Jinna Baalu</a></p>
+                <p class="footer-message">Giving back through open source</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
