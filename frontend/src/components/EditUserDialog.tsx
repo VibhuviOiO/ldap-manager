@@ -140,9 +140,11 @@ export default function EditUserDialog({ open, onClose, clusterName, entry, onSu
                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                   >
                     <option value="">Select {field.label}</option>
-                    {field.options?.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
+                    {field.options?.map((option) => {
+                      const optionValue = typeof option === 'object' ? option.value : option
+                      const optionLabel = typeof option === 'object' ? option.label : option
+                      return <option key={optionValue} value={optionValue}>{optionLabel}</option>
+                    })}
                   </Select>
                 ) : field.type === 'checkbox' ? (
                   <div className="flex items-center space-x-2">
