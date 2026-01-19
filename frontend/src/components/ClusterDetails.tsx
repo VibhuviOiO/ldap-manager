@@ -1,20 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search } from 'lucide-react'
+import { ArrowLeft, Search, Users, FolderTree, Building2, Database as DatabaseIcon, Activity, BarChart3, Plus } from 'lucide-react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Input } from './ui/input'
-import DirectoryStats from './DirectoryStats'
 import DirectoryTable from './DirectoryTable'
 import MonitoringView from './MonitoringView'
 import ActivityLogView from './ActivityLogView'
+import CreateUserDialog from './CreateUserDialog'
+import ColumnSettings from './ColumnSettings'
 import axios from 'axios'
+
+interface Column {
+  name: string
+  label: string
+  default_visible: boolean
+}
 
 export default function ClusterDetails() {
   const { clusterName } = useParams<{ clusterName: string }>()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'directory' | 'monitoring' | 'activity'>('directory')
-  const [directoryView, setDirectoryView] = useState<'users' | 'groups' | 'ous' | 'all'>('users')
+  const [activeView, setActiveView] = useState<'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity'>('users')
   const [entries, setEntries] = useState<any[]>([])
   const [monitoring, setMonitoring] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -23,18 +29,60 @@ export default function ClusterDetails() {
   const [pageSize] = useState(10)
   const [totalEntries, setTotalEntries] = useState(0)
   const [hasMore, setHasMore] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [clusterConfig, setClusterConfig] = useState<any>(null)
+  const [tableColumns, setTableColumns] = useState<Record<string, Column[]>>({})
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     loadMonitoring()
-    if (activeTab === 'directory') {
-      loadClusterData()
+    loadClusterConfig()
+    loadTableColumns()
+  }, [clusterName])
+
+  useEffect(() => {
+    if (['users', 'groups', 'ous', 'all'].includes(activeView)) {
+      const timer = setTimeout(() => {
+        loadClusterData()
+      }, 500)
+      return () => clearTimeout(timer)
     }
-  }, [clusterName, activeTab, directoryView, page, searchQuery])
+  }, [clusterName, activeView, page, searchQuery])
+
+  const loadTableColumns = async () => {
+    try {
+      const res = await axios.get(`/api/clusters/columns/${clusterName}`)
+      setTableColumns(res.data)
+      
+      // Load saved preferences from localStorage or use defaults
+      const savedPrefs = localStorage.getItem(`ldap-columns-${clusterName}`)
+      if (savedPrefs) {
+        setVisibleColumns(JSON.parse(savedPrefs))
+      } else {
+        // Initialize with default visible columns
+        const defaults: Record<string, string[]> = {}
+        Object.keys(res.data).forEach(view => {
+          defaults[view] = res.data[view]
+            .filter((col: Column) => col.default_visible)
+            .map((col: Column) => col.name)
+        })
+        setVisibleColumns(defaults)
+      }
+    } catch (err) {
+      console.error('Failed to load table columns', err)
+    }
+  }
+
+  const handleColumnsChange = (view: string, columns: string[]) => {
+    const updated = { ...visibleColumns, [view]: columns }
+    setVisibleColumns(updated)
+    localStorage.setItem(`ldap-columns-${clusterName}`, JSON.stringify(updated))
+  }
 
   const loadClusterData = async () => {
     setLoading(true)
     try {
-      const filterType = directoryView === 'all' ? '' : directoryView
+      const filterType = activeView === 'all' ? '' : activeView
       const res = await axios.get(`/api/entries/search`, {
         params: {
           cluster: clusterName,
@@ -48,8 +96,15 @@ export default function ClusterDetails() {
       setEntries(res.data.entries || [])
       setTotalEntries(res.data.total || 0)
       setHasMore(res.data.has_more || false)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load cluster data', err)
+      const errorMsg = err.response?.data?.detail || 'Failed to load data'
+      if (errorMsg.includes("Can't contact LDAP server")) {
+        setMonitoring({ 
+          status: 'error', 
+          message: 'Cannot connect to LDAP server. Please verify the server is running and accessible.' 
+        })
+      }
     }
     setLoading(false)
   }
@@ -59,43 +114,54 @@ export default function ClusterDetails() {
     setPage(1)
   }
 
-  const handleViewChange = (view: 'users' | 'groups' | 'ous' | 'all') => {
-    setDirectoryView(view)
-    setPage(1)
-  }
-
-  const getFilteredEntries = () => entries
-
   const loadMonitoring = async () => {
-    setLoading(true)
     try {
-      const res = await axios.get(`/api/monitoring/health?cluster=${clusterName}`)
+      const res = await axios.get(`/api/clusters/health/${clusterName}`)
       setMonitoring(res.data)
     } catch (err) {
       console.error('Failed to load monitoring data', err)
+      setMonitoring({ status: 'error', message: 'Failed to check cluster health' })
     }
-    setLoading(false)
+  }
+
+  const loadClusterConfig = async () => {
+    try {
+      const res = await axios.get('/api/clusters/list')
+      const cluster = res.data.clusters.find((c: any) => c.name === clusterName)
+      setClusterConfig(cluster)
+    } catch (err) {
+      console.error('Failed to load cluster config', err)
+    }
+  }
+
+  const isDirectoryView = ['users', 'groups', 'ous', 'all'].includes(activeView)
+  const getStatusClass = () => {
+    if (monitoring?.status === 'healthy') return 'bg-primary/10 text-primary'
+    if (monitoring?.status === 'warning') return 'bg-yellow-500/10 text-yellow-600'
+    return 'bg-destructive/10 text-destructive'
+  }
+  const getNavClass = (view: string) => {
+    return `flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+      activeView === view ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+    }`
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-3xl font-bold text-foreground">{decodeURIComponent(clusterName || '')}</h2>
-            <div className="flex items-center space-x-2">
-              <p className="text-muted-foreground">Cluster Details</p>
+            <h2 className="text-3xl font-bold">{decodeURIComponent(clusterName || '')}</h2>
+            <div className="flex items-center space-x-2 mt-1">
+              <p className="text-sm text-muted-foreground">LDAP Directory</p>
               {monitoring && (
-                <span className={`text-sm px-2 py-1 rounded ${
-                  monitoring.status === 'healthy' 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'bg-destructive/10 text-destructive'
-                }`}>
-                  {monitoring.status === 'healthy' ? '● Healthy' : '● Unhealthy'}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getStatusClass()}`}>
+                  {monitoring.status === 'healthy' && '● Healthy'}
+                  {monitoring.status === 'warning' && '● Warning'}
+                  {monitoring.status === 'error' && '● Error'}
                 </span>
               )}
             </div>
@@ -103,125 +169,115 @@ export default function ClusterDetails() {
         </div>
       </div>
 
-      <div className="flex space-x-2 border-b">
-        <button
-          onClick={() => setActiveTab('directory')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'directory'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Directory
-        </button>
-        <button
-          onClick={() => setActiveTab('monitoring')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'monitoring'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Monitoring
-        </button>
-        <button
-          onClick={() => setActiveTab('activity')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'activity'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Activity Log
-        </button>
+      {monitoring && monitoring.status !== 'healthy' && (
+        <Card className="border-l-4 border-l-destructive">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <div className="text-destructive mt-0.5">⚠</div>
+              <div>
+                <p className="font-medium text-sm">{monitoring.status === 'error' ? 'Connection Error' : 'Configuration Required'}</p>
+                <p className="text-sm text-muted-foreground mt-1">{monitoring.message}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="bg-card border rounded-lg">
+        <div className="flex overflow-x-auto">
+          <button onClick={() => setActiveView('users')} className={getNavClass('users')}>
+            <Users className="h-4 w-4" />
+            <span>Users</span>
+          </button>
+          <button onClick={() => setActiveView('groups')} className={getNavClass('groups')}>
+            <FolderTree className="h-4 w-4" />
+            <span>Groups</span>
+          </button>
+          <button onClick={() => setActiveView('ous')} className={getNavClass('ous')}>
+            <Building2 className="h-4 w-4" />
+            <span>Organizational Units</span>
+          </button>
+          <button onClick={() => setActiveView('all')} className={getNavClass('all')}>
+            <DatabaseIcon className="h-4 w-4" />
+            <span>All Entries</span>
+          </button>
+          <button onClick={() => setActiveView('monitoring')} className={getNavClass('monitoring')}>
+            <BarChart3 className="h-4 w-4" />
+            <span>Monitoring</span>
+          </button>
+          <button onClick={() => setActiveView('activity')} className={getNavClass('activity')}>
+            <Activity className="h-4 w-4" />
+            <span>Activity Log</span>
+          </button>
+        </div>
       </div>
 
-      {activeTab === 'directory' ? (
-        <>
-          <DirectoryStats clusterName={clusterName || ''} />
-
-          <div className="flex space-x-2 border-b">
-            <button
-              onClick={() => handleViewChange('users')}
-              className={`px-4 py-2 text-sm font-medium ${
-                directoryView === 'users'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Users
-            </button>
-            <button
-              onClick={() => handleViewChange('groups')}
-              className={`px-4 py-2 text-sm font-medium ${
-                directoryView === 'groups'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Groups
-            </button>
-            <button
-              onClick={() => handleViewChange('ous')}
-              className={`px-4 py-2 text-sm font-medium ${
-                directoryView === 'ous'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Organizational Units
-            </button>
-            <button
-              onClick={() => handleViewChange('all')}
-              className={`px-4 py-2 text-sm font-medium ${
-                directoryView === 'all'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              All Entries
-            </button>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>
-                  {directoryView === 'users' && 'Users'}
-                  {directoryView === 'groups' && 'Groups'}
-                  {directoryView === 'ous' && 'Organizational Units'}
-                  {directoryView === 'all' && 'All Directory Entries'}
-                </CardTitle>
+      {isDirectoryView ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>
+                {activeView === 'users' && 'Users'}
+                {activeView === 'groups' && 'Groups'}
+                {activeView === 'ous' && 'Organizational Units'}
+                {activeView === 'all' && 'All Directory Entries'}
+              </CardTitle>
+              <div className="flex items-center space-x-3">
+                {!clusterConfig?.readonly && activeView === 'users' && (
+                  <Button onClick={() => setShowCreateDialog(true)} size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create User
+                  </Button>
+                )}
+                {tableColumns[activeView] && (
+                  <ColumnSettings
+                    columns={tableColumns[activeView]}
+                    visibleColumns={visibleColumns[activeView] || []}
+                    onColumnsChange={(cols) => handleColumnsChange(activeView, cols)}
+                  />
+                )}
                 <div className="relative w-80">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Search by username, name, email..."
+                    placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <DirectoryTable
-                entries={getFilteredEntries()}
-                directoryView={directoryView}
-                loading={loading}
-                page={page}
-                pageSize={pageSize}
-                totalEntries={totalEntries}
-                hasMore={hasMore}
-                onPageChange={setPage}
-              />
-            </CardContent>
-          </Card>
-        </>
-      ) : activeTab === 'monitoring' ? (
-        <MonitoringView monitoring={monitoring} loading={loading} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <DirectoryTable
+              entries={entries}
+              directoryView={activeView as 'users' | 'groups' | 'ous' | 'all'}
+              loading={loading}
+              page={page}
+              pageSize={pageSize}
+              totalEntries={totalEntries}
+              hasMore={hasMore}
+              onPageChange={setPage}
+              columns={tableColumns[activeView]}
+              visibleColumns={visibleColumns[activeView]}
+            />
+          </CardContent>
+        </Card>
+      ) : activeView === 'monitoring' ? (
+        <MonitoringView clusterName={clusterName || ''} monitoring={monitoring} loading={loading} />
       ) : (
         <ActivityLogView />
+      )}
+
+      {showCreateDialog && (
+        <CreateUserDialog
+          open={showCreateDialog}
+          onClose={() => setShowCreateDialog(false)}
+          clusterName={clusterName || ''}
+          baseDn={clusterConfig?.base_dn || ''}
+          onSuccess={() => loadClusterData()}
+        />
       )}
     </div>
   )

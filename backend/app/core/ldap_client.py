@@ -100,7 +100,18 @@ class LDAPClient:
     
     def add(self, dn: str, attributes: Dict) -> bool:
         try:
-            ldif = [(k, v if isinstance(v, list) else [v]) for k, v in attributes.items()]
+            ldif = []
+            for k, val in attributes.items():
+                values = val if isinstance(val, list) else [val]
+                encoded_values = []
+                for v in values:
+                    if isinstance(v, str):
+                        encoded_values.append(v.encode())
+                    elif isinstance(v, (int, float, bool)):
+                        encoded_values.append(str(v).encode())
+                    else:
+                        encoded_values.append(v)
+                ldif.append((k, encoded_values))
             self.conn.add_s(dn, ldif)
             return True
         except ldap.LDAPError as e:
@@ -122,9 +133,9 @@ class LDAPClient:
         except ldap.LDAPError as e:
             raise Exception(f"Delete failed: {str(e)}")
     
-    def get_entry_count(self, base_dn: str) -> int:
+    def get_entry_count(self, base_dn: str, filter_str: str = "(objectClass=*)") -> int:
         try:
-            results = self.conn.search_s(base_dn, ldap.SCOPE_SUBTREE, "(objectClass=*)", ["dn"])
+            results = self.conn.search_s(base_dn, ldap.SCOPE_SUBTREE, filter_str, ["dn"])
             return len(results)
         except ldap.LDAPError:
             return 0
