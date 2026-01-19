@@ -47,8 +47,8 @@ test.describe('User Lifecycle (Create → Verify → Delete)', () => {
     await page.selectOption('select#role', 'Warrior');
     await page.selectOption('select#kingdom', 'Hastinapura');
     await page.selectOption('select#allegiance', 'Pandavas');
-    await page.selectOption('select#isWarrior', 'TRUE');
-    await page.selectOption('select#isAdmin', 'FALSE');
+    await page.check('input#isWarrior');
+    await page.uncheck('input#isAdmin');
     
     // Check form validity
     const formValid = await page.evaluate(() => {

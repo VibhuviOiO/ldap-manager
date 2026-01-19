@@ -44,6 +44,8 @@ test.describe('User Creation Form', () => {
 
   test('should populate dropdown options from config', async ({ page }) => {
     const roleSelect = page.locator('select#role');
+    await roleSelect.waitFor({ state: 'visible' });
+    await page.waitForTimeout(500);
     const roleOptions = await roleSelect.locator('option').allTextContents();
     expect(roleOptions).toContain('Warrior');
     expect(roleOptions).toContain('King');
@@ -70,6 +72,10 @@ test.describe('User Creation Form', () => {
   test('should fill form and submit (integration test)', async ({ page }) => {
     const timestamp = Date.now();
     const username = `testuser${timestamp}`;
+    
+    // Wait for form to be ready
+    await page.waitForSelector('input#uid', { state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(500);
     
     // Fill all fields
     await page.fill('input#uid', username);

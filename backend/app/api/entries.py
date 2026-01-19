@@ -117,7 +117,7 @@ async def search_by_cluster(
         
         return {
             "entries": entries,
-            "total": total if page == 1 else len(entries),
+            "total": total,
             "page": page,
             "page_size": page_size,
             "has_more": bool(next_cookie)

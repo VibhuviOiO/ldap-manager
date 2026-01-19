@@ -28,7 +28,7 @@ export default function ClusterDetails() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(10)
   const [totalEntries, setTotalEntries] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -55,7 +55,7 @@ export default function ClusterDetails() {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [clusterName, activeView, page, searchQuery])
+  }, [clusterName, activeView, page, searchQuery, pageSize])
 
   const loadTableColumns = async () => {
     try {
@@ -229,61 +229,61 @@ export default function ClusterDetails() {
       )}
 
       {isDirectoryView ? (
-        <Card className="shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>
-                {activeView === 'users' && 'Users'}
-                {activeView === 'groups' && 'Groups'}
-                {activeView === 'ous' && 'Organizational Units'}
-                {activeView === 'all' && 'All Directory Entries'}
-              </CardTitle>
-              <div className="flex items-center space-x-3">
-                {!clusterConfig?.readonly && activeView === 'users' && (
-                  <Button onClick={() => setShowCreateDialog(true)} size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Create User
-                  </Button>
-                )}
-                {tableColumns[activeView] && (
-                  <ColumnSettings
-                    columns={tableColumns[activeView]}
-                    visibleColumns={visibleColumns[activeView] || []}
-                    onColumnsChange={(cols) => handleColumnsChange(activeView, cols)}
-                  />
-                )}
-                <div className="relative w-80">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">
+              {activeView === 'users' && 'Users'}
+              {activeView === 'groups' && 'Groups'}
+              {activeView === 'ous' && 'Organizational Units'}
+              {activeView === 'all' && 'All Directory Entries'}
+            </h2>
+            <div className="flex items-center space-x-3">
+              {!clusterConfig?.readonly && activeView === 'users' && (
+                <Button onClick={() => setShowCreateDialog(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Create User
+                </Button>
+              )}
+              {tableColumns[activeView] && (
+                <ColumnSettings
+                  columns={tableColumns[activeView]}
+                  visibleColumns={visibleColumns[activeView] || []}
+                  onColumnsChange={(cols) => handleColumnsChange(activeView, cols)}
+                />
+              )}
+              <div className="relative w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <DirectoryTable
-              entries={entries}
-              directoryView={activeView as 'users' | 'groups' | 'ous' | 'all'}
-              loading={loading}
-              page={page}
-              pageSize={pageSize}
-              totalEntries={totalEntries}
-              hasMore={hasMore}
-              onPageChange={setPage}
-              columns={tableColumns[activeView]}
-              visibleColumns={visibleColumns[activeView]}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              onChangePassword={handleChangePassword}
-              readonly={clusterConfig?.readonly}
-            />
-          </CardContent>
-        </Card>
+          </div>
+          <DirectoryTable
+            entries={entries}
+            directoryView={activeView as 'users' | 'groups' | 'ous' | 'all'}
+            loading={loading}
+            page={page}
+            pageSize={pageSize}
+            totalEntries={totalEntries}
+            hasMore={hasMore}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            columns={tableColumns[activeView]}
+            visibleColumns={visibleColumns[activeView]}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+            onChangePassword={handleChangePassword}
+            readonly={clusterConfig?.readonly}
+          />
+        </div>
       ) : activeView === 'monitoring' ? (
         <MonitoringView clusterName={clusterName || ''} monitoring={monitoring} loading={loading} />
       ) : (
