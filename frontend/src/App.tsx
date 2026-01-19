@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
-import { Database, Home, Moon, Sun } from 'lucide-react'
+import { Home, Moon, Sun } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import ClusterDetails from './components/ClusterDetails'
+import logo from './assets/ldap.svg'
 
 function Header() {
   const location = useLocation()
@@ -42,9 +43,7 @@ function Header() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Database className="h-6 w-6 text-primary" />
-              </div>
+              <img src={logo} alt="Logo" className="h-10" />
               <div>
                 <h1 className="text-xl font-bold text-foreground">LDAP Manager</h1>
                 <p className="text-xs text-muted-foreground">Multi-cluster directory management</p>
@@ -60,12 +59,21 @@ function Header() {
               </button>
             )}
           </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-2 hover:bg-accent rounded-md transition-colors"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </button>
           {isClusterPage && (
             <div className="text-right">
               <h2 className="text-lg font-semibold text-foreground">{clusterName}</h2>
               <p className="text-xs text-muted-foreground">{clusterInfo?.description || 'LDAP Directory'}</p>
             </div>
           )}
+          </div>
         </div>
       </div>
     </header>
