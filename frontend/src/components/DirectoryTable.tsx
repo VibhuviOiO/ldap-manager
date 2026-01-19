@@ -339,7 +339,7 @@ export default function DirectoryTable({
               <select
                 value={pageSize}
                 onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-                className="border rounded px-2 py-1 text-sm"
+                className="border border-input bg-background rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
