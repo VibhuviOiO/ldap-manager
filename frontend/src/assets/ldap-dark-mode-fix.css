@@ -1,0 +1,16 @@
+/* Fix for LDAP logo in dark mode */
+@media (prefers-color-scheme: dark) {
+  img[src*="ldap.svg"] {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+/* Alternative: If you want to just remove the white background */
+/* 
+@media (prefers-color-scheme: dark) {
+  img[src*="ldap.svg"] {
+    background: transparent;
+    mix-blend-mode: screen;
+  }
+}
+*/
