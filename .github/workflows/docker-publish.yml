@@ -6,12 +6,6 @@ permissions:
   id-token: write
 
 on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
   workflow_dispatch:
 
 
@@ -57,18 +51,15 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=raw,value=latest,enable={{is_default_branch}}
-          type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
-          type=ref,event=branch
-          type=ref,event=pr,prefix=pr-
-          type=sha,prefix={{branch}}-,format=short
+          type=raw,value=latest
+          type=raw,value=${{ steps.version.outputs.version }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         file: Dockerfile.prod
-        push: ${{ github.event_name != 'pull_request' }}
+        push: true
         platforms: linux/amd64,linux/arm64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
