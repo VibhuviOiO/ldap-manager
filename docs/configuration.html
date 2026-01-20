@@ -444,6 +444,34 @@
           label: Location
           default_visible: false     # Custom attribute (hidden)</code></pre>
 
+            <h2>Context Path Configuration</h2>
+            <p>Serve LDAP Manager under a custom base path (e.g., <code>/ldap-manager/</code>) for integration with other applications.</p>
+
+            <h3>Production Deployment</h3>
+            <pre><code># Build and run with context path
+CONTEXT_PATH=/ldap-manager docker-compose -f docker-compose.prod.yml up -d
+
+# Access at
+http://localhost:8000/ldap-manager/</code></pre>
+
+            <h3>Development Mode</h3>
+            <pre><code># Run with context path
+CONTEXT_PATH=/ldap-manager docker-compose up
+
+# Access at
+http://localhost:5173/ldap-manager/</code></pre>
+
+            <h3>Nginx Reverse Proxy</h3>
+            <pre><code>location /ldap-manager/ {
+    proxy_pass http://ldap-manager:8000/ldap-manager/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}</code></pre>
+
+            <div class="note">
+                <strong>Note:</strong> For integration with IAM/Auth applications, configure your reverse proxy to forward the context path to LDAP Manager. The parent app handles authentication while LDAP Manager handles directory management.
+            </div>
+
             <h2>Environment Variables</h2>
             <p>Configure LDAP Manager behavior using environment variables in docker-compose.yml:</p>
 
@@ -457,7 +485,8 @@
       - ./config.yml:/app/config.yml
     environment:
       - PYTHONUNBUFFERED=1
-      - VITE_FOOTER_TEXT=LDAP Manager • My Company</code></pre>
+      - VITE_FOOTER_TEXT=LDAP Manager • My Company
+      - CONTEXT_PATH=/ldap-manager  # Optional: custom base path</code></pre>
 
             <h3>Available Variables</h3>
             <table>
@@ -475,6 +504,11 @@
                     <td><code>VITE_FOOTER_TEXT</code></td>
                     <td>Custom footer text (HTML allowed)</td>
                     <td>LDAP Manager</td>
+                </tr>
+                <tr>
+                    <td><code>CONTEXT_PATH</code></td>
+                    <td>Custom base path for app</td>
+                    <td>/</td>
                 </tr>
             </table>
 

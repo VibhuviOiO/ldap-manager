@@ -3,12 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
+import os
 from app.api import connection, entries, monitoring, logs, clusters, password
+
+# Get context path from environment variable (default: empty string for root)
+CONTEXT_PATH = os.getenv("CONTEXT_PATH", "").rstrip("/")
 
 app = FastAPI(
     title="LDAP Management API",
     description="RESTful API for OpenLDAP management",
-    version="1.0.0"
+    version="1.0.0",
+    root_path=CONTEXT_PATH
 )
 
 app.add_middleware(
@@ -44,8 +49,8 @@ if static_dir.exists():
 else:
     @app.get("/")
     def root():
-        return {"message": "LDAP Management API", "version": "1.0.0"}
+        return {"message": "LDAP Management API", "version": "1.0.0", "context_path": CONTEXT_PATH}
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "context_path": CONTEXT_PATH}

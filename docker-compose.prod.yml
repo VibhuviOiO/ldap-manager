@@ -1,0 +1,25 @@
+services:
+  ldap-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      args:
+        CONTEXT_PATH: ${CONTEXT_PATH:-}
+    container_name: ldap-manager-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CONTEXT_PATH=${CONTEXT_PATH:-}
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    networks:
+      - ldap-network
+      - openldap-docker_ldap-network
+
+networks:
+  ldap-network:
+    driver: bridge
+  openldap-docker_ldap-network:
+    name: openldap-docker_ldap-network
+    external: true

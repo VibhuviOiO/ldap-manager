@@ -1,244 +1,219 @@
-import { useState, useEffect } from 'react'
+import { memo } from 'react'
+import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Server, CheckCircle, XCircle, Database, Activity, Users, ArrowRight } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Server, XCircle, Database, ArrowRight, CheckCircle } from 'lucide-react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
-import axios from 'axios'
+import { passwordService } from '@/services'
+import { sanitizeInput } from '@/lib/sanitize'
+import { toast, getErrorMessage } from '@/lib/toast'
+import { ClusterCardSkeleton } from './Skeleton'
+import { useClusters, useConnect } from '@/hooks/useClusterInfo'
 
-interface DashboardProps {
-  setConnected: (connected: boolean) => void
+const passwordSchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+})
+
+type PasswordFormData = z.infer<typeof passwordSchema>
+
+interface PasswordDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  clusterName: string
+  onSuccess: () => void
 }
 
-interface Cluster {
-  name: string
-  host: string | null
-  port: number
-  nodes: { host: string; port: number }[]
-  base_dn: string | null
-  bind_dn: string
-  readonly: boolean
-  description: string
-}
+function PasswordDialog({ open, onOpenChange, clusterName, onSuccess }: PasswordDialogProps) {
+  const connectMutation = useConnect()
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
+  })
 
-interface ClusterStatus {
-  name: string
-  connected: boolean
-  passwordCached: boolean
-  stats?: {
-    entries: number
-    groups: number
-    users: number
-  }
-}
-
-export default function Dashboard() {
-  const navigate = useNavigate()
-  const [clusters, setClusters] = useState<Cluster[]>([])
-  const [clusterStatuses, setClusterStatuses] = useState<Map<string, ClusterStatus>>(new Map())
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
-  const [selectedCluster, setSelectedCluster] = useState<string>('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    loadClusters()
-  }, [])
-
-  const loadClusters = async () => {
+  const onSubmit = async (data: PasswordFormData) => {
     try {
-      const res = await axios.get('/api/clusters/list')
-      const clusterList = res.data.clusters || []
-      setClusters(clusterList)
-      
-      // Check password cache for each cluster
-      const statuses = new Map<string, ClusterStatus>()
-      for (const cluster of clusterList) {
-        const cacheRes = await axios.get(`/api/password/check/${cluster.name}`)
-        statuses.set(cluster.name, {
-          name: cluster.name,
-          connected: false,
-          passwordCached: cacheRes.data.cached
-        })
-      }
-      setClusterStatuses(statuses)
+      const sanitizedPwd = sanitizeInput(data.password)
+      await connectMutation.mutateAsync({ clusterName, password: sanitizedPwd })
+      reset()
+      onOpenChange(false)
+      toast.success(`Connected to ${clusterName}`)
+      onSuccess()
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || 'Failed to load clusters'
-      setError(errorMsg)
-      console.error('Failed to load clusters', err)
+      toast.error(`Connection failed: ${getErrorMessage(err)}`)
     }
   }
 
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Setup Password for {clusterName}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              {...register('password')}
+              placeholder="Enter bind password"
+              aria-describedby="password-help"
+            />
+            {errors.password && (
+              <p className="text-sm text-destructive mt-1" role="alert">{errors.password.message}</p>
+            )}
+            <p id="password-help" className="text-xs text-muted-foreground mt-1">
+              Password will be cached securely for future connections
+            </p>
+          </div>
+          <Button type="submit" disabled={connectMutation.isPending} className="w-full">
+            {connectMutation.isPending ? (
+              <>
+                <span className="animate-spin mr-2" aria-hidden="true">⏳</span>
+                Saving...
+              </>
+            ) : (
+              'Save Password'
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Dashboard() {
+  const navigate = useNavigate()
+  const { data: clusters = [], isLoading: loadingClusters, error: queryError } = useClusters()
+  const [showPasswordDialog, setShowPasswordDialog] = React.useState(false)
+  const [selectedCluster, setSelectedCluster] = React.useState<string>('')
+  const [passwordCache, setPasswordCache] = React.useState<Record<string, boolean>>({})
+
+  React.useEffect(() => {
+    const checkPasswords = async () => {
+      const cache: Record<string, boolean> = {}
+      for (const cluster of clusters) {
+        try {
+          const res = await passwordService.checkPasswordCache(cluster.name)
+          cache[cluster.name] = res.cached
+        } catch {
+          cache[cluster.name] = false
+        }
+      }
+      setPasswordCache(cache)
+    }
+    if (clusters.length > 0) {
+      checkPasswords()
+    }
+  }, [clusters])
+
   const handleConnect = async (clusterName: string) => {
-    const status = clusterStatuses.get(clusterName)
-    if (!status?.passwordCached) {
+    if (passwordCache[clusterName]) {
+      navigate(`/cluster/${encodeURIComponent(clusterName)}`)
+    } else {
       setSelectedCluster(clusterName)
       setShowPasswordDialog(true)
     }
   }
 
-  const connectToCluster = async (clusterName: string, pwd: string) => {
-    setLoading(true)
-    setError('')
-    try {
-      await axios.post('/api/connection/connect', {
-        cluster_name: clusterName,
-        bind_password: pwd
-      })
-      
-      // Update status - password now cached
-      const newStatuses = new Map(clusterStatuses)
-      newStatuses.set(clusterName, {
-        name: clusterName,
-        connected: false,
-        passwordCached: true
-      })
-      setClusterStatuses(newStatuses)
-      setShowPasswordDialog(false)
-      setPassword('')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Connection failed')
-    }
-    setLoading(false)
-  }
-
-  const handlePasswordSubmit = () => {
-    if (!password) {
-      setError('Password required')
-      return
-    }
-    connectToCluster(selectedCluster, password)
-  }
-
   return (
-    <div className="container mx-auto px-6 py-8 space-y-8">
+    <main className="container mx-auto px-6 py-8 space-y-8">
       <div className="space-y-2">
         <h2 className="text-4xl font-bold text-foreground">LDAP Clusters</h2>
         <p className="text-lg text-muted-foreground">Manage and monitor your directory services</p>
       </div>
 
-      {error && (
+      {queryError && (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="p-6">
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-3" role="alert" aria-live="assertive">
               <div className="p-2 bg-destructive/10 rounded-lg">
-                <XCircle className="h-5 w-5 text-destructive" />
+                <XCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-destructive mb-1">Configuration Error</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
-                {error.includes('not found') && (
-                  <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Please create <code className="bg-background px-2 py-1 rounded text-xs font-mono">config.yml</code> from <code className="bg-background px-2 py-1 rounded text-xs font-mono">config.example.yml</code>
-                    </p>
-                  </div>
-                )}
+                <p className="text-sm text-muted-foreground">{getErrorMessage(queryError)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {clusters.length === 0 ? (
+      {loadingClusters ? (
+        <div className="grid gap-6">
+          <ClusterCardSkeleton />
+          <ClusterCardSkeleton />
+          <ClusterCardSkeleton />
+        </div>
+      ) : clusters.length === 0 ? (
         <Card>
           <CardContent className="p-6">
-            <p className="text-muted-foreground">Loading clusters...</p>
+            <p className="text-muted-foreground">No clusters configured</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-6">
-          {clusters.map(cluster => {
-            const status = clusterStatuses.get(cluster.name)
-            return (
-              <Card key={cluster.name} className="hover:shadow-lg transition-all duration-200 border-2">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2.5 bg-primary/10 rounded-xl">
-                        <Database className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xl">{cluster.name}</span>
-                          {status?.passwordCached && (
-                            <div className="flex items-center space-x-1 px-2 py-1 bg-primary/10 rounded-full">
-                              <CheckCircle className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-xs font-medium text-primary">Connected</span>
-                            </div>
-                          )}
-                        </div>
-                        {cluster.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{cluster.description}</p>
+          {clusters.map(cluster => (
+            <Card key={cluster.name} className="hover:shadow-lg transition-all duration-200 border-2">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                      <Database className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl">{cluster.name}</span>
+                        {passwordCache[cluster.name] && (
+                          <div className="flex items-center space-x-1 px-2 py-1 bg-primary/10 rounded-full">
+                            <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-medium text-primary">Connected</span>
+                          </div>
                         )}
                       </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      {status?.passwordCached ? (
-                        <Button 
-                          onClick={() => navigate(`/cluster/${encodeURIComponent(cluster.name)}`)}
-                          className="shadow-sm"
-                        >
-                          View Cluster <ArrowRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      ) : (
-                        <Button 
-                          onClick={() => handleConnect(cluster.name)}
-                          disabled={loading}
-                          variant="outline"
-                          className="border-2"
-                        >
-                          Setup Password
-                        </Button>
+                      {cluster.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{cluster.description}</p>
                       )}
                     </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2.5 rounded-lg">
-                    <Server className="h-4 w-4" />
-                    <span className="font-mono">{cluster.host || `${cluster.nodes.length} nodes`}:{cluster.port}</span>
                   </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => handleConnect(cluster.name)}
+                      className="shadow-sm"
+                      aria-label={`View ${cluster.name} cluster`}
+                    >
+                      {passwordCache[cluster.name] ? 'View Cluster' : 'Setup Password'} <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2.5 rounded-lg">
+                  <Server className="h-4 w-4" aria-hidden="true" />
+                  <span className="font-mono">{cluster.host || `${cluster.nodes?.length || 0} nodes`}:{cluster.port}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Setup Password for {selectedCluster}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Password</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter bind password"
-                onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Password will be cached securely for future connections
-              </p>
-            </div>
-            {error && (
-              <div className="flex items-center space-x-2 text-destructive text-sm">
-                <XCircle className="h-4 w-4" />
-                <span>{error}</span>
-              </div>
-            )}
-            <Button onClick={handlePasswordSubmit} disabled={loading} className="w-full">
-              {loading ? 'Saving...' : 'Save Password'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <PasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        clusterName={selectedCluster}
+        onSuccess={() => {
+          setPasswordCache(prev => ({ ...prev, [selectedCluster]: true }))
+          navigate(`/cluster/${encodeURIComponent(selectedCluster)}`)
+        }}
+      />
+    </main>
   )
 }
+
+export default memo(Dashboard)

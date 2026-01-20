@@ -1,30 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import axios from 'axios'
-import { useEffect } from 'react'
-
-interface PasswordPolicy {
-  min_length: number
-  require_confirmation: boolean
-}
+import { clusterService, entryService } from '@/services'
+import { passwordSchema, PasswordFormData } from '@/lib/validations'
+import { LDAPEntry, PasswordPolicy } from '@/types'
 
 interface ChangePasswordDialogProps {
   open: boolean
   onClose: () => void
   clusterName: string
-  entry: any
+  entry: LDAPEntry
   onSuccess: () => void
 }
 
 export default function ChangePasswordDialog({ open, onClose, clusterName, entry, onSuccess }: ChangePasswordDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [policy, setPolicy] = useState<PasswordPolicy>({ min_length: 0, require_confirmation: true })
+  const [policy, setPolicy] = useState<PasswordPolicy>({ min_length: 8, require_confirmation: true })
+  
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema)
+  })
 
   useEffect(() => {
     if (open) {
@@ -34,46 +33,24 @@ export default function ChangePasswordDialog({ open, onClose, clusterName, entry
 
   const loadPasswordPolicy = async () => {
     try {
-      const res = await axios.get(`/api/clusters/password-policy/${clusterName}`)
-      setPolicy(res.data)
+      const policy = await clusterService.getPasswordPolicy(clusterName)
+      setPolicy(policy)
     } catch (err) {
       console.error('Failed to load password policy', err)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: PasswordFormData) => {
     setLoading(true)
-    setError('')
-
-    // Validation
-    if (policy.min_length > 0 && newPassword.length < policy.min_length) {
-      setError(`Password must be at least ${policy.min_length} characters long`)
-      setLoading(false)
-      return
-    }
-
-    if (policy.require_confirmation && newPassword !== confirmPassword) {
-      setError('Passwords do not match')
-      setLoading(false)
-      return
-    }
-
     try {
-      await axios.put('/api/entries/update', {
-        cluster_name: clusterName,
-        dn: entry.dn,
-        modifications: {
-          userPassword: newPassword
-        }
+      await entryService.updateEntry(clusterName, entry.dn, {
+        userPassword: data.newPassword
       })
-
       onSuccess()
       onClose()
-      setNewPassword('')
-      setConfirmPassword('')
+      reset()
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to change password')
+      console.error('Failed to change password', err)
     }
     setLoading(false)
   }
@@ -84,47 +61,36 @@ export default function ChangePasswordDialog({ open, onClose, clusterName, entry
         <SheetHeader>
           <SheetTitle>Change Password: {entry.uid}</SheetTitle>
         </SheetHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
           <div className="space-y-4">
             <div>
               <Label htmlFor="newPassword">New Password *</Label>
               <Input
                 id="newPassword"
                 type="password"
-                required
-                minLength={policy.min_length || undefined}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                {...register('newPassword')}
                 placeholder="Enter new password"
                 autoComplete="new-password"
               />
-              {policy.min_length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Minimum {policy.min_length} characters</p>
+              {errors.newPassword && (
+                <p className="text-xs text-destructive mt-1">{errors.newPassword.message}</p>
               )}
             </div>
 
-            {policy.require_confirmation && (
-              <div>
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  required
-                  minLength={policy.min_length || undefined}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                  autoComplete="new-password"
-                />
-              </div>
-            )}
-          </div>
-
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded">
-              {error}
+            <div>
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                {...register('confirmPassword')}
+                placeholder="Re-enter new password"
+                autoComplete="new-password"
+              />
+              {errors.confirmPassword && (
+                <p className="text-xs text-destructive mt-1">{errors.confirmPassword.message}</p>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
