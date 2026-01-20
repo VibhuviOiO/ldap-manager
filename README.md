@@ -10,6 +10,9 @@ Modern web-based management interface for OpenLDAP servers with React + TypeScri
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 
+![LDAP Manager Dashboard](https://vibhuvioio.com/ldap-manager/img/1ldap-cluster-home.png)
+![Directory data](https://vibhuvioio.com/ldap-manager/img/3ldap-users.png)
+
 ## Features
 
 - **Multi-cluster Management** - Manage multiple LDAP servers from single interface
@@ -19,24 +22,45 @@ Modern web-based management interface for OpenLDAP servers with React + TypeScri
 - **Health Monitoring** - Real-time cluster health status
 - **Modern UI** - React 18 + TypeScript + shadcn/ui components
 
-![LDAP Manager Dashboard](https://vibhuvioio.com/ldap-manager/img/1ldap-cluster-home.png)
-
 See [Full Documentation](https://vibhuvioio.com/ldap-manager/) for advanced configuration (custom forms, table columns, user creation).
 
 ## Quick Start
 
+### Docker Run (Fastest)
+
 ```bash
-# Clone and configure
-git clone https://github.com/VibhuviOiO/ldap-manager.git
-cd ldap-manager
-cp config.example.yml config.yml
+# Download config template
+wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/config.example.yml -O config.yml
+
+# Edit config with your LDAP details
+nano config.yml
+
+# Run container
+docker run -d \
+  --name ldap-manager \
+  -p 8000:8000 \
+  -v $(pwd)/config.yml:/app/config.yml:ro \
+  ghcr.io/vibhuvioio/ldap-manager:latest
+
+# Access UI at http://localhost:8000
+```
+
+### Docker Compose (Recommended)
+
+```bash
+# Download docker-compose.prod.yml
+wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/docker-compose.prod.yml
+
+# Download config template
+wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/config.example.yml -O config.yml
+
+# Edit config with your LDAP details
 nano config.yml
 
 # Start application
-docker-compose up -d
+docker-compose -f docker-compose.prod.yml up -d
 
-# Access UI
-http://localhost:5173
+# Access UI at http://localhost:8000
 ```
 
 ## Configuration
@@ -125,7 +149,11 @@ See [docs/testing.html](https://vibhuvioio.com/ldap-manager/testing.html) for de
 
 ## Compatible LDAP Servers
 
-✅ OpenLDAP 2.4+, OpenLDAP 2.6+, 389 Directory Server, ApacheDS, Any RFC 4511 compliant LDAP server
+✅ **Tested**: OpenLDAP 2.4+, OpenLDAP 2.6+
+
+🔄 **Should work** (RFC 4511 compliant): 389 Directory Server, ApacheDS, Active Directory
+
+**Requirements**: LDAP v3 protocol, RFC 2696 (paged results) support recommended for large directories
 
 ## Contributing
 
@@ -147,4 +175,4 @@ MIT License - See [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ for the LDAP community**
+**Developed by [Vibhuvi OiO](https://vibhuvioio.com)**
