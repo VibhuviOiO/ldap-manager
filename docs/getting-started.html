@@ -69,39 +69,13 @@
             <h2>Prerequisites</h2>
             <ul>
                 <li>Docker 20.10+</li>
-                <li>Docker Compose 2.0+</li>
+                <li>Docker Compose 2.0+ (optional)</li>
                 <li>OpenLDAP server (local or remote)</li>
+                <li><code>config.yml</code> file with LDAP cluster configuration</li>
             </ul>
 
-            <h2>Docker Run</h2>
-            <pre><code>docker run -d \
-  -p 5173:5173 \
-  -p 8000:8000 \
-  -v ./config.yml:/app/config.yml \
-  ghcr.io/vibhuvioio/ldap-manager:latest</code></pre>
-
-            <p>Access the UI at <code>http://localhost:5173</code></p>
-
-            <h2>Docker Compose</h2>
-            
-            <h3>Basic Setup</h3>
-            <pre><code>version: '3.8'
-services:
-  ldap-manager:
-    image: ghcr.io/vibhuvioio/ldap-manager:latest
-    ports:
-      - "5173:5173"
-      - "8000:8000"
-    volumes:
-      - ./config.yml:/app/config.yml
-    environment:
-      - PYTHONUNBUFFERED=1</code></pre>
-
-            <p>Start the application:</p>
-            <pre><code>docker-compose up -d</code></pre>
-
-            <h2>Configuration File</h2>
-            <p>Create a <code>config.yml</code> file with your LDAP cluster configuration:</p>
+            <h2>Step 1: Create Configuration File</h2>
+            <p>Create a <code>config.yml</code> file with your LDAP cluster details:</p>
 
             <h3>Single Node Example</h3>
             <pre><code>clusters:
@@ -127,14 +101,40 @@ services:
             <p>For connecting to LDAP running on Docker host:</p>
             <pre><code>clusters:
   - name: "Local Docker LDAP"
-    host: "host.docker.internal"  # Docker Desktop
+    host: "host.docker.internal"  # Docker Desktop (Mac/Windows)
     # host: "172.17.0.1"          # Linux Docker
     port: 389
     bind_dn: "cn=Manager,dc=example,dc=com"</code></pre>
 
-            <h2>First Time Setup</h2>
+            <div class="note">
+                <strong>Tip:</strong> Download the example config:
+                <pre><code>wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/config.example.yml -O config.yml</code></pre>
+            </div>
+
+            <h2>Step 2: Run with Docker</h2>
+
+            <h3>Option A: Docker Run (Fastest)</h3>
+            <pre><code>docker run -d \
+  --name ldap-manager \
+  -p 8000:8000 \
+  -v $(pwd)/config.yml:/app/config.yml:ro \
+  ghcr.io/vibhuvioio/ldap-manager:latest</code></pre>
+
+            <p>Access the UI at <code>http://localhost:8000</code></p>
+
+            <h3>Option B: Docker Compose (Recommended)</h3>
+            
+            <p>Download docker-compose.prod.yml:</p>
+            <pre><code>wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/docker-compose.prod.yml</code></pre>
+
+            <p>Start the application:</p>
+            <pre><code>docker-compose -f docker-compose.prod.yml up -d</code></pre>
+
+            <p>Access the UI at <code>http://localhost:8000</code></p>
+
+            <h2>Step 3: First Time Setup</h2>
             <ol>
-                <li>Open <code>http://localhost:5173</code> in your browser</li>
+                <li>Open <code>http://localhost:8000</code> in your browser</li>
                 <li>Click on your cluster name</li>
                 <li>Enter the admin password when prompted</li>
                 <li>Password is cached (SHA256 hashed) for all users</li>

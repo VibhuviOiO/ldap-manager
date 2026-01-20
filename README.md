@@ -26,6 +26,14 @@ See [Full Documentation](https://vibhuvioio.com/ldap-manager/) for advanced conf
 
 ## Quick Start
 
+### System Requirements
+
+| Resource | Minimum | Recommended | Production (High Traffic) |
+|----------|---------|-------------|---------------------------|
+| CPU      | 1 core  | 2 cores     | 4 cores                   |
+| RAM      | 512 MB  | 1 GB        | 2 GB                      |
+| Disk     | 500 MB  | 1 GB        | 2 GB                      |
+
 ### Docker Run (Fastest)
 
 ```bash
