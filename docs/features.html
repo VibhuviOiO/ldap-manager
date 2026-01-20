@@ -10,11 +10,14 @@
     <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Features - Docker Registry UI Repository Management & Analytics</title>
-    <meta name="description" content="Explore Docker Registry UI features: repository management, image browsing, layer inspection, storage analytics, vulnerability scanning, and multi-registry support.">
-    <meta name="keywords" content="docker registry features, docker image management, docker layer inspection, registry analytics, docker storage usage, container image browser">
-    <link rel="canonical" href="https://vibhuvioio.com/docker-registry-ui/features.html">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐳</text></svg>">
+    <title>Features - LDAP Manager</title>
+    <meta name="description" content="Explore LDAP Manager features: multi-cluster management, user/group management, monitoring, replication topology, and custom schema support.">
+    <meta name="keywords" content="ldap manager features, ldap ui, openldap management, ldap monitoring, ldap replication">
+    <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/features.html">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="docs.css">
 </head>
@@ -25,14 +28,14 @@
     <!-- End Google Tag Manager (noscript) -->
     <nav class="navbar">
         <div class="container">
-            <a href="https://vibhuvioio.com/docker-registry-ui/" class="nav-brand" style="text-decoration: none; color: inherit;">
-                <span class="logo">🐳</span>
-                <span class="brand-name">Docker Registry UI</span>
+            <a href="index.html" class="nav-brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 12px;">
+                <img src="img/ldap.png" alt="LDAP Manager" style="height: 40px; width: auto;">
+                <span class="brand-name">LDAP Manager</span>
             </a>
             <div class="nav-links">
                 <a href="index.html">Home</a>
                 <a href="getting-started.html">Docs</a>
-                <a href="https://github.com/vibhuvi/docker-registry-ui" target="_blank">GitHub</a>
+                <a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">GitHub</a>
             </div>
         </div>
     </nav>
@@ -47,18 +50,12 @@
                 </div>
                 <div class="nav-section">
                     <h3>Features</h3>
-                    <a href="features.html">Overview</a>
-                    <a href="security.html">Security Scanning</a>
-                    <a href="bulk-operations.html">Bulk Operations</a>
+                    <a href="features.html" class="active">Overview</a>
                 </div>
                 <div class="nav-section">
-                    <h3>Examples</h3>
-                    <a href="example-multi-registry.html">Multi-Registry Setup</a>
-                    <a href="example-basic-auth.html">Basic Auth Registry</a>
-                </div>
-                <div class="nav-section">
-                    <h3>Reference</h3>
-                    <a href="api.html">API Integration</a>
+                    <h3>Contributing</h3>
+                    
+                    
                     <a href="development.html">Development</a>
                     <a href="testing.html">Testing Guide</a>
                 </div>
@@ -67,116 +64,226 @@
 
         <main class="docs-content">
             <h1>Features Overview</h1>
+            <p>LDAP Manager provides a modern, intuitive interface for managing OpenLDAP servers with powerful features for directory management, monitoring, and administration.</p>
 
-            <h2>Repository Management</h2>
-            <p>Browse and manage Docker repositories with an intuitive interface:</p>
-            <img src="img/repositories.png" alt="Repository Management Interface" style="max-width: 100%; border: 1px solid #e3e8ef; border-radius: 5px; margin: 20px 0;">
+            <h2>Dashboard & Multi-Cluster Management</h2>
+            <p>Manage multiple LDAP servers from a single interface. The dashboard shows all configured clusters with health status indicators.</p>
+            <img src="img/1ldap-cluster-home.png" alt="LDAP Manager Dashboard">
+            
+            <h3>Key Features:</h3>
             <ul>
-                <li><strong>Repository List</strong>: View all repositories in your registry</li>
-                <li><strong>Search</strong>: Quickly find repositories by name</li>
-                <li><strong>Tags View</strong>: See all tags for each repository</li>
-                <li><strong>Tag Details</strong>: View manifest, layers, and metadata</li>
-                <li><strong>Delete Tags</strong>: Remove individual tags (when not in read-only mode)</li>
+                <li><strong>Multi-Cluster Support</strong> - Connect to multiple LDAP servers</li>
+                <li><strong>Health Status</strong> - Real-time connection status for each cluster</li>
+                <li><strong>Quick Access</strong> - Click any cluster to view its directory</li>
+                <li><strong>Cluster Information</strong> - View host, port, and description</li>
             </ul>
 
-            <h2>Multi-Registry Support</h2>
-            <p>Manage multiple Docker registries from a single interface:</p>
-            <img src="img/registry-configuration-for-multi-registry-support.png" alt="Multi-Registry Configuration" style="max-width: 100%; border: 1px solid #e3e8ef; border-radius: 5px; margin: 20px 0;">
+            <h2>Connecting to LDAP</h2>
+            <p>When you first connect to a cluster, you'll be prompted to enter the admin password. This password is securely cached using SHA256 hashing.</p>
+            
+            <div class="note">
+                <strong>Password Caching:</strong> Passwords are hashed with SHA256 and stored in <code>/app/.cache/</code> within the container. They are never logged or transmitted in plain text. All users share the same cached password for each cluster.
+            </div>
+
+            <h3>How It Works:</h3>
+            <ol>
+                <li>Click on a cluster name</li>
+                <li>Enter the bind DN password when prompted</li>
+                <li>Password is cached for future use</li>
+                <li>All users can access the cluster without re-entering password</li>
+            </ol>
+
+            <h2>Users Management</h2>
+            <p>Browse, search, create, edit, and manage LDAP user entries with an intuitive table interface.</p>
+            <img src="img/3ldap-users.png" alt="LDAP Users Management">
+
+            <h3>Features:</h3>
             <ul>
-                <li>Switch between registries using the dropdown selector</li>
-                <li>Support for local and remote registries</li>
-                <li>Basic authentication support</li>
-                <li>Independent configuration per registry</li>
+                <li><strong>Server-Side Search</strong> - Fast LDAP filter-based search across uid, cn, mail, sn</li>
+                <li><strong>Server-Side Pagination</strong> - Efficient handling of large directories (RFC 2696)</li>
+                <li><strong>Create User</strong> - Custom form with auto-fill fields</li>
+                <li><strong>Edit User</strong> - Modify user attributes (except uid/uidNumber)</li>
+                <li><strong>Change Password</strong> - Update user passwords with policy validation</li>
+                <li><strong>Delete User</strong> - Remove user entries</li>
+                <li><strong>Column Customization</strong> - Show/hide columns via Settings button</li>
+                <li><strong>Custom Schema Support</strong> - Automatically detects custom objectClasses</li>
             </ul>
 
-            <h2>Image Information</h2>
-            <p>Detailed information about each image tag:</p>
+            <h3>User Actions:</h3>
+            <p>Each user row has an Actions menu with:</p>
             <ul>
-                <li><strong>Size</strong>: Total image size</li>
-                <li><strong>Created</strong>: Image creation timestamp</li>
-                <li><strong>Digest</strong>: SHA256 digest for verification</li>
-                <li><strong>Architecture</strong>: Platform architecture (amd64, arm64, etc.)</li>
-                <li><strong>OS</strong>: Operating system</li>
-                <li><strong>Layers</strong>: Layer-by-layer breakdown with sizes</li>
+                <li>🔑 Change Password</li>
+                <li>✏️ Edit User</li>
+                <li>🗑️ Delete User</li>
             </ul>
 
-            <h2>Layer Inspection</h2>
-            <p>View detailed layer information:</p>
-            <img src="img/layer-inspection.png" alt="Layer Inspection View" style="max-width: 100%; border: 1px solid #e3e8ef; border-radius: 5px; margin: 20px 0;">
+            <h2>Groups Management</h2>
+            <p>View and manage LDAP groups including groupOfNames, groupOfUniqueNames, and posixGroup.</p>
+            <img src="img/4ldap-groups.png" alt="LDAP Groups Management">
+
+            <h3>Features:</h3>
             <ul>
-                <li>Layer digest and size</li>
-                <li>Command that created the layer</li>
-                <li>Vulnerability count per layer</li>
-                <li>Layer order and hierarchy</li>
+                <li><strong>Group Types</strong> - Supports all standard LDAP group types</li>
+                <li><strong>Member Display</strong> - View group members</li>
+                <li><strong>Group Details</strong> - See description and DN</li>
+                <li><strong>Search Groups</strong> - Filter groups by name</li>
             </ul>
 
-            <h2>Vulnerability Scanning</h2>
-            <p>Built-in Trivy integration for security scanning:</p>
-            <img src="img/cves.png" alt="Vulnerability Scanning with CVE Details" style="max-width: 100%; border: 1px solid #e3e8ef; border-radius: 5px; margin: 20px 0;">
+            <h2>Organizational Units (OUs)</h2>
+            <p>Navigate and manage the organizational unit hierarchy in your LDAP directory.</p>
+            <img src="img/5ldap-OUs.png" alt="LDAP Organizational Units">
+
+            <h3>Features:</h3>
             <ul>
-                <li><strong>On-Demand Scanning</strong>: Scan any image tag</li>
-                <li><strong>Severity Levels</strong>: Critical, High, Medium, Low, Unknown</li>
-                <li><strong>CVE Details</strong>: View detailed vulnerability information</li>
-                <li><strong>NVD Links</strong>: Direct links to National Vulnerability Database</li>
-                <li><strong>Layer Attribution</strong>: See which layer introduced each vulnerability</li>
-                <li><strong>Persistent Results</strong>: Scan results saved for future reference</li>
+                <li><strong>OU Hierarchy</strong> - View organizational structure</li>
+                <li><strong>OU Details</strong> - Name, description, and DN</li>
+                <li><strong>Navigate Structure</strong> - Browse through OU tree</li>
             </ul>
 
-            <h2>Bulk Operations</h2>
-            <p>Efficiently manage multiple images:</p>
+            <h2>All Directory Entries</h2>
+            <p>View all LDAP entries regardless of type - users, groups, OUs, and custom objects.</p>
+            <img src="img/6ldap-directory-entries.png" alt="All LDAP Directory Entries">
+
+            <h3>Features:</h3>
             <ul>
-                <li><strong>Pattern Matching</strong>: Delete tags matching wildcards (e.g., <code>dev-*</code>)</li>
-                <li><strong>Age-Based Cleanup</strong>: Remove tags older than specified days</li>
-                <li><strong>Retention Policies</strong>: Keep minimum number of recent tags</li>
-                <li><strong>Dry Run Mode</strong>: Preview deletions before executing</li>
-                <li><strong>Batch Processing</strong>: Delete multiple tags in one operation</li>
+                <li><strong>Complete View</strong> - All object types in one table</li>
+                <li><strong>Object Class Display</strong> - See entry types</li>
+                <li><strong>Universal Search</strong> - Search across all entries</li>
             </ul>
 
-            <h2>Read/Write Modes</h2>
-            <p>Control access levels:</p>
+            <h2>Monitoring & Health Status</h2>
+            <p>Real-time monitoring of LDAP cluster health, connection metrics, and replication status.</p>
+
+            <h3>Single Node Monitoring</h3>
+            <img src="img/ldap-monitoring.png" alt="LDAP Single Node Monitoring">
+            <p>Monitor individual LDAP server health and statistics.</p>
+
+            <h3>Multi-Node Cluster Monitoring</h3>
+            <img src="img/ldap-monitoring-multi-node.png" alt="LDAP Multi-Node Cluster Monitoring">
+            <p>View health status across all nodes in a multi-master cluster.</p>
+
+            <h3>Monitoring Features:</h3>
             <ul>
-                <li><strong>Read-Only Mode</strong>: Browse and scan without modification</li>
-                <li><strong>Read-Write Mode</strong>: Full access including delete operations</li>
-                <li>Toggle via environment variable or UI</li>
-                <li>Ideal for production environments</li>
+                <li><strong>Health Status</strong> - Connection state for each node</li>
+                <li><strong>Directory Statistics</strong> - User, group, and OU counts</li>
+                <li><strong>Connection Metrics</strong> - Response times and availability</li>
+                <li><strong>Cluster Overview</strong> - All nodes at a glance</li>
             </ul>
 
-            <h2>User Interface</h2>
-            <p>Modern, responsive design:</p>
+            <h2>Replication Topology</h2>
+            <p>Visualize multi-master replication topology and sync status between nodes.</p>
+            <img src="img/ldap-syncRepl.png" alt="LDAP Replication Topology">
+
+            <h3>Features:</h3>
             <ul>
-                <li>Clean, intuitive layout inspired by Jira/Bitbucket</li>
-                <li>Responsive design for mobile and desktop</li>
-                <li>Dark mode support</li>
-                <li>Fast, client-side rendering</li>
-                <li>Real-time updates</li>
+                <li><strong>Visual Topology</strong> - See replication connections</li>
+                <li><strong>Sync Status</strong> - Monitor replication health</li>
+                <li><strong>Node Status</strong> - Individual node health indicators</li>
+                <li><strong>Multi-Master Support</strong> - Full N-way replication visualization</li>
             </ul>
 
-            <h2>API Integration</h2>
-            <p>Full Docker Registry v2 API support:</p>
+            <h2>Activity Logs</h2>
+            <p>View LDAP operation history and search examples.</p>
+
+            <h3>Features:</h3>
             <ul>
-                <li>List repositories and tags</li>
-                <li>Get image manifests</li>
-                <li>Delete images by digest</li>
-                <li>CORS support for browser access</li>
+                <li><strong>Operation History</strong> - See recent LDAP operations</li>
+                <li><strong>Search Examples</strong> - Learn LDAP filter syntax</li>
+                <li><strong>Audit Trail</strong> - Track directory changes</li>
             </ul>
 
-            <h2>Storage Analytics</h2>
-            <p>Understand registry storage usage:</p>
-            <img src="img/analytics-understand-disk-usage.png" alt="Storage Analytics Dashboard" style="max-width: 100%; border: 1px solid #e3e8ef; border-radius: 5px; margin: 20px 0;">
+            <h2>Custom Schema Support</h2>
+            <p>LDAP Manager automatically detects and displays custom objectClasses and attributes.</p>
+
+            <h3>How It Works:</h3>
             <ul>
-                <li>Total repository size</li>
-                <li>Per-tag storage breakdown</li>
-                <li>Layer deduplication visibility</li>
-                <li>Storage trends over time</li>
+                <li>Filters out standard classes (top, person, inetOrgPerson, etc.)</li>
+                <li>Displays custom schema name in "Object Class" column</li>
+                <li>Shows custom attributes in "Details" column</li>
+                <li>Supports any custom LDAP schema</li>
             </ul>
 
-            <h2>Search and Filter</h2>
-            <p>Find what you need quickly:</p>
+            <h3>Example Custom Schemas:</h3>
             <ul>
-                <li>Repository name search</li>
-                <li>Tag filtering</li>
-                <li>Vulnerability severity filtering</li>
-                <li>Sort by name, date, or size</li>
+                <li><code>oioCloudEmployee</code> - Custom employee schema</li>
+                <li><code>MahabharataUser</code> - Custom user schema</li>
+                <li>Any custom objectClass you define</li>
+            </ul>
+
+            <h2>Column Customization</h2>
+            <p>Users can customize which columns are visible in tables.</p>
+
+            <h3>Features:</h3>
+            <ul>
+                <li><strong>Settings Button</strong> - Click ⚙️ icon to open column settings</li>
+                <li><strong>Show/Hide Columns</strong> - Toggle visibility for any attribute</li>
+                <li><strong>Persistent Preferences</strong> - Settings saved in browser localStorage</li>
+                <li><strong>Default Visibility</strong> - Admins can set defaults in config.yml</li>
+            </ul>
+
+            <h2>Server-Side Features</h2>
+            
+            <h3>Server-Side Pagination (RFC 2696)</h3>
+            <p>Efficiently handle large LDAP directories without loading all entries at once.</p>
+            <ul>
+                <li>Default: 10 entries per page</li>
+                <li>Navigate with Previous/Next buttons</li>
+                <li>Reduces LDAP server load</li>
+                <li>Faster response times</li>
+            </ul>
+
+            <h3>Server-Side Search</h3>
+            <p>Fast LDAP filter-based search performed on the server.</p>
+            <ul>
+                <li>Search across: uid, cn, mail, sn</li>
+                <li>Real-time results</li>
+                <li>LDAP filter syntax</li>
+                <li>No client-side filtering</li>
+            </ul>
+
+            <h2>Auto-Discovery</h2>
+            <p>Automatic base DN detection from LDAP rootDSE.</p>
+            <ul>
+                <li>No need to specify base_dn in config</li>
+                <li>Queries LDAP server for namingContexts</li>
+                <li>Automatically selects appropriate base DN</li>
+                <li>Works with any LDAP server</li>
+            </ul>
+
+            <h2>Technology Stack</h2>
+            
+            <h3>Frontend</h3>
+            <ul>
+                <li><strong>React 18</strong> - Modern UI framework</li>
+                <li><strong>TypeScript</strong> - Type-safe development</li>
+                <li><strong>Vite</strong> - Fast build tool</li>
+                <li><strong>shadcn/ui</strong> - Beautiful UI components (Radix UI + Tailwind CSS)</li>
+                <li><strong>Axios</strong> - HTTP client</li>
+                <li><strong>React Router</strong> - Navigation</li>
+            </ul>
+
+            <h3>Backend</h3>
+            <ul>
+                <li><strong>FastAPI</strong> - Modern Python web framework</li>
+                <li><strong>python-ldap</strong> - LDAP client library</li>
+                <li><strong>PyYAML</strong> - Configuration parsing</li>
+                <li><strong>Uvicorn</strong> - ASGI server</li>
+            </ul>
+
+            <h2>Compatible LDAP Servers</h2>
+            <ul>
+                <li>✅ OpenLDAP 2.4+</li>
+                <li>✅ OpenLDAP 2.6+</li>
+                <li>✅ 389 Directory Server</li>
+                <li>✅ ApacheDS</li>
+                <li>✅ Any RFC 4511 compliant LDAP server</li>
+            </ul>
+
+            <h2>Next Steps</h2>
+            <ul>
+                <li><a href="configuration.html">Learn how to configure clusters</a></li>
+                <li><a href="api.html">Explore API endpoints</a></li>
+                <li><a href="security.html">Review security best practices</a></li>
             </ul>
         </main>
     </div>

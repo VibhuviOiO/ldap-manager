@@ -10,11 +10,14 @@
     <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Getting Started - Docker Registry UI Installation Guide</title>
-    <meta name="description" content="Quick start guide for Docker Registry UI. Learn how to install and configure Docker Registry UI with Docker, Docker Compose, and multi-registry setup.">
-    <meta name="keywords" content="docker registry ui installation, docker registry setup, install docker registry ui, docker compose registry, docker registry tutorial">
-    <link rel="canonical" href="https://vibhuvioio.com/docker-registry-ui/getting-started.html">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐳</text></svg>">
+    <title>Getting Started - LDAP Manager Installation Guide</title>
+    <meta name="description" content="Quick start guide for LDAP Manager. Learn how to install and configure LDAP Manager with Docker, Docker Compose, and multi-cluster setup.">
+    <meta name="keywords" content="ldap manager installation, openldap ui setup, install ldap manager, ldap docker compose, ldap tutorial">
+    <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/getting-started.html">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="docs.css">
 </head>
@@ -25,14 +28,14 @@
     <!-- End Google Tag Manager (noscript) -->
     <nav class="navbar">
         <div class="container">
-            <a href="https://vibhuvioio.com/docker-registry-ui/" class="nav-brand" style="text-decoration: none; color: inherit;">
-                <span class="logo">🐳</span>
-                <span class="brand-name">Docker Registry UI</span>
+            <a href="index.html" class="nav-brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 12px;">
+                <img src="img/ldap.png" alt="LDAP Manager" style="height: 40px; width: auto;">
+                <span class="brand-name">LDAP Manager</span>
             </a>
             <div class="nav-links">
                 <a href="index.html">Home</a>
                 <a href="getting-started.html">Docs</a>
-                <a href="https://github.com/vibhuvi/docker-registry-ui" target="_blank">GitHub</a>
+                <a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">GitHub</a>
             </div>
         </div>
     </nav>
@@ -48,17 +51,11 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
-                    <a href="security.html">Security Scanning</a>
-                    <a href="bulk-operations.html">Bulk Operations</a>
                 </div>
                 <div class="nav-section">
-                    <h3>Examples</h3>
-                    <a href="example-multi-registry.html">Multi-Registry Setup</a>
-                    <a href="example-basic-auth.html">Basic Auth Registry</a>
-                </div>
-                <div class="nav-section">
-                    <h3>Reference</h3>
-                    <a href="api.html">API Integration</a>
+                    <h3>Contributing</h3>
+                    
+                    
                     <a href="development.html">Development</a>
                     <a href="testing.html">Testing Guide</a>
                 </div>
@@ -67,145 +64,116 @@
 
         <main class="docs-content">
             <h1>Getting Started</h1>
+            <p>Quick start guide to get LDAP Manager up and running in minutes.</p>
+
+            <h2>Prerequisites</h2>
+            <ul>
+                <li>Docker 20.10+</li>
+                <li>Docker Compose 2.0+</li>
+                <li>OpenLDAP server (local or remote)</li>
+            </ul>
 
             <h2>Docker Run</h2>
-            <pre><code># Create Docker network
-docker network create registry-net
+            <pre><code>docker run -d \
+  -p 5173:5173 \
+  -p 8000:8000 \
+  -v ./config.yml:/app/config.yml \
+  ghcr.io/vibhuvioio/ldap-manager:latest</code></pre>
 
-# Start test registry
-docker run -d --name test-registry --network registry-net -p 5001:5000 \
-  -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2
-
-# Run Registry UI (using container name)
-docker run -d --name registry-ui --network registry-net -p 5000:5000 \
-  -e 'REGISTRIES=[{"name":"Local Registry","api":"http://test-registry:5000"}]' \
-  -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest</code></pre>
-
-            <h3>Activity Log - Docker Run</h3>
-            <details>
-                <summary><strong>📋 Click to view test results</strong></summary>
-                <pre style="background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; max-height: 400px; overflow-y: auto; border: 1px solid #333; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;"><code># Docker Run Test Results - Docker Network Approach
-# Date: 2025-12-02
-
-$ docker network create registry-net
-Error response from daemon: network with name registry-net already exists
-
-$ docker run -d --name test-registry --network registry-net -p 5001:5000 \
-  -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2
-c991c042ebb30d9d2643005ab7f4e4a033ba64aa6fdb94175bfa42fb00ff54f1
-
-$ docker run -d --name registry-ui --network registry-net -p 5005:5000 \
-  -e 'REGISTRIES=[{"name":"Local Registry","api":"http://test-registry:5000"}]' \
-  -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
-ef26a979e49cf3a118601771d9068cba7537caac108614d4f4c682bfe1a9557f
-
-$ docker ps -a
-CONTAINER ID   IMAGE                                          COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-ef26a979e49c   ghcr.io/vibhuvioio/docker-registry-ui:latest   "uvicorn asgi:app --…"   2 seconds ago    Up 2 seconds    0.0.0.0:5005->5000/tcp, :::5005->5000/tcp   registry-ui
-c991c042ebb3   registry:2                                     "/entrypoint.sh /etc…"   16 seconds ago   Up 15 seconds   0.0.0.0:5001->5000/tcp, :::5001->5000/tcp   test-registry
-
-# Push test images
-$ docker pull nginx:alpine && docker tag nginx:alpine localhost:5001/nginx:alpine && docker tag nginx:alpine localhost:5001/nginx:latest
-alpine: Pulling from library/nginx
-Digest: sha256:b3c656d55d7ad751196f21b7fd2e8d4da9cb430e32f646adcf92441b72f82b14
-Status: Image is up to date for nginx:alpine
-
-$ docker push localhost:5001/nginx:alpine && docker push localhost:5001/nginx:latest
-The push refers to repository [localhost:5001/nginx]
-194fa24e147d: Pushed 
-alpine: digest: sha256:667473807103639a0aca5b49534a216d2b64f0fb868aaa801f023da0cdd781c7 size: 2495
-latest: digest: sha256:667473807103639a0aca5b49534a216d2b64f0fb868aaa801f023da0cdd781c7 size: 2495
-
-# Access UI at http://localhost:5005 to see the nginx images</code></pre>
-            </details>
+            <p>Access the UI at <code>http://localhost:5173</code></p>
 
             <h2>Docker Compose</h2>
             
-            <h3>Development</h3>
-            <pre><code># Clone repository
-git clone https://github.com/vibhuvi/docker-registry-ui.git
-cd docker-registry-ui
+            <h3>Basic Setup</h3>
+            <pre><code>version: '3.8'
+services:
+  ldap-manager:
+    image: ghcr.io/vibhuvioio/ldap-manager:latest
+    ports:
+      - "5173:5173"
+      - "8000:8000"
+    volumes:
+      - ./config.yml:/app/config.yml
+    environment:
+      - PYTHONUNBUFFERED=1</code></pre>
 
-# Start development environment
-docker-compose -f docker-compose.dev.yml up -d
+            <p>Start the application:</p>
+            <pre><code>docker-compose up -d</code></pre>
 
-# Access UI at http://localhost:5005</code></pre>
+            <h2>Configuration File</h2>
+            <p>Create a <code>config.yml</code> file with your LDAP cluster configuration:</p>
+
+            <h3>Single Node Example</h3>
+            <pre><code>clusters:
+  - name: "Production LDAP"
+    host: "ldap.example.com"
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"
+    base_dn: "dc=example,dc=com"  # Optional - auto-discovered if omitted</code></pre>
+
+            <h3>Multi-Master Cluster Example</h3>
+            <pre><code>clusters:
+  - name: "LDAP Cluster"
+    nodes:
+      - host: "ldap1.example.com"
+        port: 389
+      - host: "ldap2.example.com"
+        port: 389
+      - host: "ldap3.example.com"
+        port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"</code></pre>
+
+            <h3>Docker Host Connection</h3>
+            <p>For connecting to LDAP running on Docker host:</p>
+            <pre><code>clusters:
+  - name: "Local Docker LDAP"
+    host: "host.docker.internal"  # Docker Desktop
+    # host: "172.17.0.1"          # Linux Docker
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"</code></pre>
+
+            <h2>First Time Setup</h2>
+            <ol>
+                <li>Open <code>http://localhost:5173</code> in your browser</li>
+                <li>Click on your cluster name</li>
+                <li>Enter the admin password when prompted</li>
+                <li>Password is cached (SHA256 hashed) for all users</li>
+            </ol>
+
+            <div class="note">
+                <strong>Note:</strong> The password is cached securely using SHA256 hashing and stored only in the container's <code>/app/.cache/</code> directory.
+            </div>
+
+            <h2>Local Development</h2>
             
-            <h4>Activity Log - Development Compose</h4>
-            <details>
-                <summary><strong>📋 Click to view test results</strong></summary>
-                <pre style="background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; max-height: 400px; overflow-y: auto; border: 1px solid #333; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;"><code># Development Compose Test Results
-# Date: 2025-12-02
-
-$ git clone https://github.com/vibhuvi/docker-registry-ui.git
-Cloning into 'docker-registry-ui'...
-remote: Enumerating objects: 1234, done.
-remote: Total 1234 (delta 0), reused 0 (delta 0), pack-reused 1234
-Receiving objects: 100% (1234/1234), 2.5 MiB | 1.2 MiB/s, done.
-
-$ cd docker-registry-ui
-$ docker-compose -f docker-compose.dev.yml up -d
-[+] Running 2/2
- ✔ Container docker-registry-ui-registry-1     Running
- ✔ Container docker-registry-ui-registry-ui-1  Started
-
-$ curl http://localhost:5005/api/registries
-{"registries":[{"api":"http://registry:5000","isAuthEnabled":false,"name":"Local Registry"}]}
-
-# Access development UI at http://localhost:5005</code></pre>
-            </details>
-
-            <h2>Local Python Development</h2>
-            <pre><code>git clone https://github.com/vibhuvi/docker-registry-ui.git
-cd docker-registry-ui
-python3 -m venv venv
-source venv/bin/activate
+            <h3>Backend</h3>
+            <pre><code>cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python run.py</code></pre>
+uvicorn app.main:app --reload --port 8000</code></pre>
 
-            <h2>Production Examples</h2>
-            <p>Ready-to-use production setups:</p>
-            
-            <h3>Single Registry Setup</h3>
-            <pre><code># Download files
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/single-registry/docker-compose.yml
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/single-registry/registries.config.json
+            <h3>Frontend</h3>
+            <pre><code>cd frontend
+npm install
+npm run dev</code></pre>
 
-# Start
-docker-compose up -d
+            <p>Access the development UI at <code>http://localhost:5173</code></p>
 
-# Access UI at http://localhost:5000</code></pre>
-            
-            <h3>Multi-Registry Setup</h3>
-            <pre><code># Download files
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/multi-registry/docker-compose.yml
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/multi-registry/registries.config.json
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/multi-registry/populate-test-images.sh
+            <h2>Verify Installation</h2>
+            <p>Check if the services are running:</p>
+            <pre><code># Check backend health
+curl http://localhost:8000/health
 
-# Start
-docker-compose up -d
+# Check frontend
+curl http://localhost:5173</code></pre>
 
-# Populate test images
-chmod +x populate-test-images.sh
-./populate-test-images.sh
-
-# Access UI at http://localhost:5003</code></pre>
-            
-            <h3>Basic Auth Setup</h3>
-            <pre><code># Download files
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/basic-auth/docker-compose.yml
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/basic-auth/registries.config.json
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/basic-auth/nginx.conf
-
-# Start
-docker-compose up -d
-
-# Access UI at http://localhost:5003
-# Auth Registry: admin/secret</code></pre>
-
-
+            <h2>Next Steps</h2>
+            <ul>
+                <li><a href="configuration.html">Configure multiple clusters</a></li>
+                <li><a href="features.html">Explore features</a></li>
+                <li><a href="security.html">Review security best practices</a></li>
+            </ul>
         </main>
     </div>
 

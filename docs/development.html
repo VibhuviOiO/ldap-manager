@@ -1,38 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-PX6NFGMV');</script>
-    <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Development Guide - Contributing to Docker Registry UI</title>
-    <meta name="description" content="Developer guide for Docker Registry UI. Learn how to contribute, set up development environment, and build features for Docker Registry UI.">
-    <meta name="keywords" content="docker registry ui development, contribute to docker registry ui, docker ui development, open source docker tools">
-    <link rel="canonical" href="https://vibhuvioio.com/docker-registry-ui/development.html">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐳</text></svg>">
+    <title>Development Guide - LDAP Manager</title>
+    <meta name="description" content="Development guide for LDAP Manager contributors: setup, architecture, technology stack, and contribution guidelines.">
+    <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/development.html">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="docs.css">
 </head>
 <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PX6NFGMV"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PX6NFGMV" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <nav class="navbar">
         <div class="container">
-            <a href="https://vibhuvioio.com/docker-registry-ui/" class="nav-brand" style="text-decoration: none; color: inherit;">
-                <span class="logo">🐳</span>
-                <span class="brand-name">Docker Registry UI</span>
+            <a href="index.html" class="nav-brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 12px;">
+                <img src="img/ldap.png" alt="LDAP Manager" style="height: 40px; width: auto;">
+                <span class="brand-name">LDAP Manager</span>
             </a>
             <div class="nav-links">
                 <a href="index.html">Home</a>
                 <a href="getting-started.html">Docs</a>
-                <a href="https://github.com/vibhuvi/docker-registry-ui" target="_blank">GitHub</a>
+                <a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">GitHub</a>
             </div>
         </div>
     </nav>
@@ -48,18 +45,10 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
-                    <a href="security.html">Security Scanning</a>
-                    <a href="bulk-operations.html">Bulk Operations</a>
                 </div>
                 <div class="nav-section">
-                    <h3>Examples</h3>
-                    <a href="example-multi-registry.html">Multi-Registry Setup</a>
-                    <a href="example-basic-auth.html">Basic Auth Registry</a>
-                </div>
-                <div class="nav-section">
-                    <h3>Reference</h3>
-                    <a href="api.html">API Integration</a>
-                    <a href="development.html" class="active">Development</a>
+                    <h3>Contributing</h3>
+                    <a href="development.html" class="active">Development Guide</a>
                     <a href="testing.html">Testing Guide</a>
                 </div>
             </nav>
@@ -67,123 +56,338 @@
 
         <main class="docs-content">
             <h1>Development Guide</h1>
+            <p>Complete guide for developers who want to contribute to LDAP Manager.</p>
 
-            <h2>Docker-Based Development (Recommended)</h2>
-            <p>Develop without installing Python or dependencies locally. All you need is Docker and a code editor.</p>
+            <h2>Technology Stack</h2>
 
-            <h3>Setup</h3>
-            <pre><code># Clone repository
-git clone https://github.com/VibhuviOiO/docker-registry-ui.git
-cd docker-registry-ui</code></pre>
-
-            <h3>Development Workflow</h3>
-            <pre><code># Build the development environment
-docker-compose -f docker/docker-compose.dev.yml build
-
-# Start registry and UI in development mode
-docker-compose -f docker/docker-compose.dev.yml up -d
-
-# View logs
-docker-compose -f docker/docker-compose.dev.yml logs -f registry-ui
-
-# Stop services
-docker-compose -f docker/docker-compose.dev.yml down</code></pre>
-
-            <h3>Live Reload</h3>
-            <p>The development compose file mounts your local code directories:</p>
+            <h3>Frontend</h3>
             <ul>
-                <li><code>app/</code> - Python backend code</li>
-                <li><code>templates/</code> - HTML templates</li>
-                <li><code>static/</code> - CSS and JavaScript</li>
-            </ul>
-            <p>Changes to these files are reflected immediately. For Python changes, restart the container:</p>
-            <pre><code>docker-compose -f docker/docker-compose.dev.yml restart registry-ui</code></pre>
-
-            <h3>Access Points</h3>
-            <ul>
-                <li><strong>UI</strong>: http://localhost:5003</li>
-                <li><strong>Registry</strong>: http://localhost:5001</li>
+                <li><strong>React 18</strong> - Modern UI framework with hooks</li>
+                <li><strong>TypeScript</strong> - Type-safe JavaScript</li>
+                <li><strong>Vite</strong> - Fast build tool and dev server</li>
+                <li><strong>shadcn/ui</strong> - Beautiful UI components built on Radix UI + Tailwind CSS</li>
+                <li><strong>Axios</strong> - HTTP client for API calls</li>
+                <li><strong>React Router</strong> - Client-side routing</li>
+                <li><strong>Tailwind CSS</strong> - Utility-first CSS framework</li>
             </ul>
 
-            <h2>Local Python Development (Alternative)</h2>
-            <p>If you prefer running Python locally:</p>
+            <h3>Backend</h3>
+            <ul>
+                <li><strong>FastAPI</strong> - Modern Python web framework</li>
+                <li><strong>Python 3.11+</strong> - Latest Python features</li>
+                <li><strong>python-ldap</strong> - LDAP client library</li>
+                <li><strong>PyYAML</strong> - YAML configuration parsing</li>
+                <li><strong>Uvicorn</strong> - ASGI server</li>
+            </ul>
+
+            <h3>Testing</h3>
+            <ul>
+                <li><strong>Playwright</strong> - E2E testing framework</li>
+                <li><strong>95 tests</strong> - Comprehensive test coverage</li>
+                <li><strong>Multi-browser</strong> - Chrome, Firefox, Safari</li>
+            </ul>
+
+            <h2>Project Structure</h2>
+            <pre><code>ldap-manager/
+├── backend/
+│   ├── app/
+│   │   ├── api/              # API endpoints
+│   │   │   ├── entries.py    # LDAP entries endpoints
+│   │   │   ├── monitoring.py # Health monitoring
+│   │   │   └── connection.py # Connection management
+│   │   ├── core/             # Core functionality
+│   │   │   ├── ldap_client.py # LDAP operations
+│   │   │   └── config.py     # Configuration loader
+│   │   ├── models/           # Data models
+│   │   └── main.py           # FastAPI application
+│   └── requirements.txt      # Python dependencies
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── ClusterDetails.tsx
+│   │   │   ├── DirectoryTable.tsx
+│   │   │   ├── CreateUserDialog.tsx
+│   │   │   ├── EditUserDialog.tsx
+│   │   │   ├── MonitoringView.tsx
+│   │   │   └── ReplicationTopology.tsx
+│   │   ├── lib/              # Utilities
+│   │   ├── services/         # API services
+│   │   ├── App.tsx           # Main app component
+│   │   └── main.tsx          # Entry point
+│   ├── tests/                # E2E tests
+│   └── package.json          # Node dependencies
+├── docs/                     # Documentation
+├── config.yml                # Cluster configuration
+├── docker-compose.yml        # Docker setup
+├── Dockerfile                # Container image
+└── README.md                 # Project readme</code></pre>
+
+            <h2>Local Development Setup</h2>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Python 3.11+</li>
+                <li>Node.js 20+</li>
+                <li>Git</li>
+                <li>OpenLDAP server (for testing)</li>
+            </ul>
+
+            <h3>1. Clone Repository</h3>
+            <pre><code>git clone https://github.com/VibhuviOiO/ldap-manager.git
+cd ldap-manager</code></pre>
+
+            <h3>2. Backend Setup</h3>
             <pre><code># Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+cd backend
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # Linux/Mac
+# or
+venv\Scripts\activate     # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run application (recommended)
-python run.py
+# Run backend server
+uvicorn app.main:app --reload --port 8000</code></pre>
 
-# Or run as ASGI (matches production image)
-uvicorn asgi:app --host 0.0.0.0 --port 5000</code></pre>
+            <p>Backend will be available at <code>http://localhost:8000</code></p>
 
-            <h2>Project Structure</h2>
-            <pre><code>docker-registry-ui/
-├── run.py                 # Application entrypoint (Flask factory)
-├── asgi.py                # ASGI wrapper for production (uvicorn)
-├── app/
-│   ├── data_store.py     # Scan results storage
-│   ├── registry.py       # Registry API client
-│   └── scanners/
-│       └── trivy.py      # Trivy scanner integration
-├── static/
-│   ├── css/              # Stylesheets
-│   └── js/               # JavaScript files
-├── templates/            # HTML templates
-├── docker/               # Docker configuration
-└── docs/                 # Documentation</code></pre>
+            <h3>3. Frontend Setup</h3>
+            <pre><code># Install dependencies
+cd frontend
+npm install
 
-            <h2>Technology Stack</h2>
+# Run development server
+npm run dev</code></pre>
+
+            <p>Frontend will be available at <code>http://localhost:5173</code></p>
+
+            <h3>4. Configuration</h3>
+            <p>Create <code>config.yml</code> in the root directory:</p>
+            <pre><code>clusters:
+  - name: "Development LDAP"
+    host: "localhost"
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"
+    base_dn: "dc=example,dc=com"</code></pre>
+
+            <h2>Architecture</h2>
+
+            <h3>Frontend Architecture</h3>
+            <pre><code>Browser
+   ↓
+React App (Port 5173)
+   ↓
+Axios HTTP Client
+   ↓
+Backend API (Port 8000)
+   ↓
+python-ldap
+   ↓
+OpenLDAP Server</code></pre>
+
+            <h3>Component Hierarchy</h3>
+            <pre><code>App.tsx
+├── Dashboard.tsx
+│   └── ClusterCard (for each cluster)
+└── ClusterDetails.tsx
+    ├── DirectoryTable.tsx
+    │   ├── CreateUserDialog.tsx
+    │   ├── EditUserDialog.tsx
+    │   └── ColumnSettings.tsx
+    ├── MonitoringView.tsx
+    │   ├── DirectoryStats.tsx
+    │   ├── NodeSyncStats.tsx
+    │   └── ReplicationTopology.tsx
+    └── ActivityLogView.tsx</code></pre>
+
+            <h3>API Flow</h3>
+            <pre><code>Frontend Request
+   ↓
+/api/entries/search
+   ↓
+FastAPI Endpoint
+   ↓
+LDAP Client
+   ↓
+ldapsearch with pagination
+   ↓
+Parse Results
+   ↓
+JSON Response</code></pre>
+
+            <h2>Key Components</h2>
+
+            <h3>Dashboard.tsx</h3>
+            <p>Main landing page showing all configured clusters with health status.</p>
+
+            <h3>ClusterDetails.tsx</h3>
+            <p>Cluster view with tabs: Users, Groups, OUs, All, Monitoring, Activity.</p>
+
+            <h3>DirectoryTable.tsx</h3>
+            <p>Reusable table component with search, pagination, and column customization.</p>
+
+            <h3>CreateUserDialog.tsx</h3>
+            <p>Dynamic form for creating users based on config.yml user_creation_form.</p>
+
+            <h3>MonitoringView.tsx</h3>
+            <p>Health monitoring dashboard with stats and replication topology.</p>
+
+            <h3>ReplicationTopology.tsx</h3>
+            <p>Visual representation of multi-master replication using SVG.</p>
+
+            <h2>Development Workflow</h2>
+
+            <h3>1. Create Feature Branch</h3>
+            <pre><code>git checkout -b feature/your-feature-name</code></pre>
+
+            <h3>2. Make Changes</h3>
             <ul>
-                <li><strong>Backend</strong>: Python 3.9+, Flask</li>
-                <li><strong>Frontend</strong>: Vanilla JavaScript, Bootstrap 5</li>
-                <li><strong>Scanner</strong>: Trivy</li>
-                <li><strong>API</strong>: Docker Registry v2 API</li>
+                <li>Follow existing code style</li>
+                <li>Add TypeScript types</li>
+                <li>Update tests if needed</li>
+                <li>Test locally</li>
             </ul>
 
-            <h2>Running Tests</h2>
-            <pre><code># Run unit tests
-python -m pytest tests/
+            <h3>3. Run Tests</h3>
+            <pre><code>cd frontend
+npm run test:e2e</code></pre>
 
-# Run with coverage
-python -m pytest --cov=app tests/</code></pre>
+            <h3>4. Commit Changes</h3>
+            <pre><code>git add .
+git commit -m "feat: add new feature"</code></pre>
 
-            <h2>Building Production Image</h2>
-            <pre><code># Build production image
-docker build -t docker-registry-ui:latest .
+            <h3>5. Push and Create PR</h3>
+            <pre><code>git push origin feature/your-feature-name</code></pre>
 
-# Test production image
-docker run -d -p 5000:5000 \
-  -v $(pwd)/data:/app/data \
-  docker-registry-ui:latest</code></pre>
+            <p>Then create a Pull Request on GitHub.</p>
 
-            <h2>Development Tips</h2>
+            <h2>Code Style Guidelines</h2>
+
+            <h3>TypeScript/React</h3>
             <ul>
-                <li><strong>Code Editor</strong>: Use any editor (VS Code, PyCharm, etc.)</li>
-                <li><strong>Debugging</strong>: Check logs with <code>docker-compose logs -f</code></li>
-                <li><strong>Database</strong>: No database required - stateless design</li>
-                <li><strong>Hot Reload</strong>: Frontend changes (HTML/CSS/JS) reflect immediately</li>
-                <li><strong>Backend Changes</strong>: Restart container for Python changes</li>
+                <li>Use functional components with hooks</li>
+                <li>Define proper TypeScript interfaces</li>
+                <li>Use meaningful variable names</li>
+                <li>Keep components small and focused</li>
+                <li>Extract reusable logic into custom hooks</li>
             </ul>
 
-            <h2>Contributing</h2>
+            <h3>Python/FastAPI</h3>
+            <ul>
+                <li>Follow PEP 8 style guide</li>
+                <li>Use type hints</li>
+                <li>Write docstrings for functions</li>
+                <li>Handle errors gracefully</li>
+                <li>Use async/await where appropriate</li>
+            </ul>
+
+            <h3>Example: Good Component</h3>
+            <pre><code>interface UserTableProps {
+  entries: LDAPEntry[];
+  onEdit: (dn: string) => void;
+  onDelete: (dn: string) => void;
+}
+
+export function UserTable({ entries, onEdit, onDelete }: UserTableProps) {
+  return (
+    &lt;table&gt;
+      {entries.map(entry => (
+        &lt;tr key={entry.dn}&gt;
+          &lt;td&gt;{entry.uid}&lt;/td&gt;
+          &lt;td&gt;{entry.cn}&lt;/td&gt;
+        &lt;/tr&gt;
+      ))}
+    &lt;/table&gt;
+  );
+}</code></pre>
+
+            <h2>Adding New Features</h2>
+
+            <h3>Adding a New API Endpoint</h3>
             <ol>
-                <li>Fork the repository</li>
-                <li>Create a feature branch</li>
-                <li>Make your changes</li>
-                <li>Write tests</li>
-                <li>Submit a pull request</li>
+                <li>Create endpoint in <code>backend/app/api/</code></li>
+                <li>Add LDAP operation in <code>backend/app/core/ldap_client.py</code></li>
+                <li>Create frontend service in <code>frontend/src/services/</code></li>
+                <li>Add UI component in <code>frontend/src/components/</code></li>
+                <li>Write tests in <code>frontend/tests/e2e/</code></li>
             </ol>
 
-            <h2>Code Style</h2>
+            <h3>Adding a New UI Component</h3>
+            <ol>
+                <li>Create component file in <code>frontend/src/components/</code></li>
+                <li>Define TypeScript interfaces</li>
+                <li>Use shadcn/ui components</li>
+                <li>Add to parent component</li>
+                <li>Test in browser</li>
+            </ol>
+
+            <h2>Building for Production</h2>
+
+            <h3>Build Docker Image</h3>
+            <pre><code>docker build -t ldap-manager:latest .</code></pre>
+
+            <h3>Test Production Build</h3>
+            <pre><code>docker run -d \
+  -p 5173:5173 \
+  -p 8000:8000 \
+  -v ./config.yml:/app/config.yml \
+  ldap-manager:latest</code></pre>
+
+            <h2>Contributing Guidelines</h2>
+
+            <h3>Before Submitting PR</h3>
             <ul>
-                <li>Follow PEP 8 for Python code</li>
-                <li>Use ESLint for JavaScript</li>
-                <li>Write descriptive commit messages</li>
-                <li>Add comments for complex logic</li>
+                <li>✅ Code follows style guidelines</li>
+                <li>✅ All tests pass</li>
+                <li>✅ No console errors</li>
+                <li>✅ Feature works in Chrome, Firefox, Safari</li>
+                <li>✅ Documentation updated if needed</li>
+                <li>✅ Commit messages are clear</li>
+            </ul>
+
+            <h3>PR Description Template</h3>
+            <pre><code>## What does this PR do?
+Brief description of changes
+
+## Type of change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing
+How was this tested?
+
+## Screenshots (if applicable)
+Add screenshots for UI changes</code></pre>
+
+            <h2>Getting Help</h2>
+            <ul>
+                <li><strong>GitHub Issues</strong> - Report bugs or request features</li>
+                <li><strong>GitHub Discussions</strong> - Ask questions</li>
+                <li><strong>Documentation</strong> - Check existing docs</li>
+                <li><strong>Code Comments</strong> - Read inline documentation</li>
+            </ul>
+
+            <h2>Resources</h2>
+            <ul>
+                <li><a href="https://react.dev/" target="_blank">React Documentation</a></li>
+                <li><a href="https://www.typescriptlang.org/docs/" target="_blank">TypeScript Docs</a></li>
+                <li><a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI Documentation</a></li>
+                <li><a href="https://ui.shadcn.com/" target="_blank">shadcn/ui Components</a></li>
+                <li><a href="https://playwright.dev/" target="_blank">Playwright Testing</a></li>
+                <li><a href="https://www.python-ldap.org/" target="_blank">python-ldap Docs</a></li>
+            </ul>
+
+            <h2>Next Steps</h2>
+            <ul>
+                <li><a href="testing.html">Learn about testing</a></li>
+                <li><a href="features.html">Explore all features</a></li>
+                <li><a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">View source code</a></li>
             </ul>
         </main>
     </div>

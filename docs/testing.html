@@ -1,38 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-PX6NFGMV');</script>
-    <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Testing Guide - Docker Registry UI Multi-Registry Testing</title>
-    <meta name="description" content="Complete testing guide for Docker Registry UI. Set up multi-registry test environment, populate test images, and verify all features.">
-    <meta name="keywords" content="docker registry testing, test docker registry, multi-registry setup, docker registry test images, registry ui testing">
-    <link rel="canonical" href="https://vibhuvioio.com/docker-registry-ui/testing.html">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐳</text></svg>">
+    <title>Testing Guide - LDAP Manager</title>
+    <meta name="description" content="Complete testing guide for LDAP Manager: E2E testing with Playwright, test coverage, and running tests.">
+    <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/testing.html">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="docs.css">
 </head>
 <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PX6NFGMV"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PX6NFGMV" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <nav class="navbar">
         <div class="container">
-            <a href="https://vibhuvioio.com/docker-registry-ui/" class="nav-brand" style="text-decoration: none; color: inherit;">
-                <span class="logo">🐳</span>
-                <span class="brand-name">Docker Registry UI</span>
+            <a href="index.html" class="nav-brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 12px;">
+                <img src="img/ldap.png" alt="LDAP Manager" style="height: 40px; width: auto;">
+                <span class="brand-name">LDAP Manager</span>
             </a>
             <div class="nav-links">
                 <a href="index.html">Home</a>
                 <a href="getting-started.html">Docs</a>
-                <a href="https://github.com/vibhuvi/docker-registry-ui" target="_blank">GitHub</a>
+                <a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">GitHub</a>
             </div>
         </div>
     </nav>
@@ -48,211 +45,373 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
-                    <a href="security.html">Security Scanning</a>
-                    <a href="bulk-operations.html">Bulk Operations</a>
                 </div>
                 <div class="nav-section">
-                    <h3>Examples</h3>
-                    <a href="example-multi-registry.html">Multi-Registry Setup</a>
-                    <a href="example-basic-auth.html">Basic Auth Registry</a>
-                </div>
-                <div class="nav-section">
-                    <h3>Reference</h3>
-                    <a href="api.html">API Integration</a>
+                    <h3>Contributing</h3>
+                    <a href="development.html">Development Guide</a>
                     <a href="testing.html" class="active">Testing Guide</a>
-                    <a href="development.html">Development</a>
                 </div>
             </nav>
         </aside>
 
         <main class="docs-content">
             <h1>Testing Guide</h1>
+            <p>Comprehensive guide to testing LDAP Manager with Playwright E2E tests.</p>
 
-            <h2>Full Feature Testing with Multi-Registry Setup</h2>
-            <p>Test all features of Docker Registry UI with a realistic multi-registry environment populated with real images.</p>
+            <h2>Test Coverage</h2>
+            <p>LDAP Manager has <strong>95 tests</strong> with <strong>100% pass rate</strong> across 3 browsers.</p>
 
-            <h2>Quick Setup</h2>
-            <p>Download the required files and start testing in minutes:</p>
-
-            <h3>Step 1: Download Files</h3>
-            <pre><code># Create a test directory
-mkdir docker-registry-ui-test
-cd docker-registry-ui-test
-
-# Download multi-registry compose file
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/refs/heads/main/docker/docker-compose-multi-registry.yml
-
-# Download test image population script
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/refs/heads/main/docker/populate-test-images.sh
-
-# Make script executable
-chmod +x populate-test-images.sh</code></pre>
-
-            <h3>Step 2: Start Multi-Registry Environment</h3>
-            <pre><code># Start two registries and the UI
-docker-compose -f docker-compose-multi-registry.yml up -d
-
-# Wait for services to be ready (about 10 seconds)
-sleep 10</code></pre>
-
-            <h3>Step 3: Populate with Test Images</h3>
-            <pre><code># Run the population script
-./populate-test-images.sh
-
-# This will:
-# - Pull popular images (alpine, nginx, redis, postgres, node, python, etc.)
-# - Push them to both test registries
-# - Create ~40+ images in Registry 1
-# - Create ~10+ images in Registry 2
-# - Takes about 5-10 minutes depending on your internet speed</code></pre>
-
-            <h3>Step 4: Access the UI</h3>
-            <pre><code># Open in your browser
-http://localhost:5003</code></pre>
-
-            <h2>What Gets Created</h2>
-            <h3>Registry 1 (localhost:5001)</h3>
+            <h3>Test Statistics</h3>
             <ul>
-                <li><strong>alpine</strong>: 3.18, 3.17, 3.16, latest</li>
-                <li><strong>nginx</strong>: 1.25, 1.24, 1.23, alpine, latest</li>
-                <li><strong>redis</strong>: 7.2, 7.0, 6.2, alpine, latest</li>
-                <li><strong>postgres</strong>: 16, 15, 14, 13, alpine</li>
-                <li><strong>node</strong>: 20, 18, 16, 20-alpine, 18-alpine</li>
-                <li><strong>python</strong>: 3.11, 3.10, 3.9, 3.11-slim, 3.10-alpine</li>
-                <li><strong>busybox</strong>: 1.36, 1.35, latest, musl</li>
-                <li><strong>ubuntu</strong>: 22.04, 20.04, 18.04, latest</li>
-                <li><strong>mysql</strong>: 8.0, 5.7, latest</li>
-                <li><strong>mongo</strong>: 7.0, 6.0, 5.0, latest</li>
-                <li><strong>myapp/service-1,2,3</strong>: v1.0.0, v1.1.0, latest</li>
+                <li><strong>Total Tests:</strong> 95</li>
+                <li><strong>Browsers:</strong> Chrome, Firefox, Safari</li>
+                <li><strong>Pass Rate:</strong> 100%</li>
+                <li><strong>Coverage:</strong> Dashboard, Users, Groups, OUs, Monitoring, User Lifecycle</li>
             </ul>
 
-            <h3>Registry 2 (localhost:5002)</h3>
+            <h2>Test Categories</h2>
+
+            <h3>Dashboard Tests (5 tests)</h3>
             <ul>
-                <li><strong>alpine</strong>: 3.18, latest</li>
-                <li><strong>nginx</strong>: 1.25, alpine</li>
-                <li><strong>redis</strong>: 7.2, alpine</li>
-                <li><strong>postgres</strong>: 16, alpine</li>
-                <li><strong>node</strong>: 20, 20-alpine</li>
+                <li>Cluster listing display</li>
+                <li>Navigation to cluster details</li>
+                <li>Health status indicators</li>
+                <li>Cluster information display</li>
             </ul>
 
-            <h2>Features to Test</h2>
-
-            <h3>1. Multi-Registry Management</h3>
+            <h3>Cluster Details Tests (8 tests)</h3>
             <ul>
-                <li>Switch between Registry 1 and Registry 2 using dropdown</li>
-                <li>View different image sets in each registry</li>
-                <li>Configure registry settings</li>
+                <li>View switching (Users, Groups, OUs, All)</li>
+                <li>Search functionality</li>
+                <li>Pagination controls</li>
+                <li>Entry display</li>
             </ul>
 
-            <h3>2. Repository Browsing</h3>
+            <h3>User Creation Tests (7 tests)</h3>
             <ul>
-                <li>Browse all repositories</li>
-                <li>Search for specific repositories</li>
-                <li>View repository details and statistics</li>
+                <li>Form validation</li>
+                <li>Custom fields display</li>
+                <li>Dropdown options</li>
+                <li>Auto-fill fields</li>
+                <li>Required field validation</li>
             </ul>
 
-            <h3>3. Tag Management</h3>
+            <h3>Column Settings Tests (4 tests)</h3>
             <ul>
-                <li>View all tags for each repository</li>
-                <li>See tag sizes and creation dates</li>
-                <li>View layer information</li>
-                <li>Delete individual tags</li>
+                <li>Show/hide columns</li>
+                <li>localStorage persistence</li>
+                <li>Default visibility</li>
+                <li>Settings dialog</li>
             </ul>
 
-            <h3>4. Vulnerability Scanning</h3>
+            <h3>User Lifecycle Tests (3 tests)</h3>
             <ul>
-                <li>Scan any image tag for vulnerabilities</li>
-                <li>View CVE details with severity levels</li>
-                <li>Filter vulnerabilities by severity</li>
-                <li>See which layer introduced each vulnerability</li>
+                <li>Create user</li>
+                <li>Verify user exists</li>
+                <li>Delete user</li>
             </ul>
 
-            <h3>5. Bulk Operations</h3>
+            <h3>User Edit Tests (11 tests)</h3>
             <ul>
-                <li>Delete multiple tags by pattern (e.g., <code>*-alpine</code>)</li>
-                <li>Age-based cleanup (e.g., older than 30 days)</li>
-                <li>Retention policies (keep last N tags)</li>
-                <li>Dry run mode to preview deletions</li>
+                <li>Field updates</li>
+                <li>Validation</li>
+                <li>Disabled fields (uid, uidNumber)</li>
+                <li>Save changes</li>
             </ul>
 
-            <h3>6. Analytics</h3>
+            <h3>Password Change Tests (11 tests)</h3>
             <ul>
-                <li>View storage usage by repository</li>
-                <li>See tag distribution</li>
-                <li>Analyze disk usage patterns</li>
+                <li>Policy validation</li>
+                <li>Confirmation matching</li>
+                <li>shadowLastChange update</li>
+                <li>Error handling</li>
             </ul>
 
-            <h2>Test Scenarios</h2>
+            <h3>Complete Lifecycle Tests (5 tests)</h3>
+            <ul>
+                <li>Create → Edit → Password Change → Delete</li>
+                <li>Full user workflow</li>
+            </ul>
 
-            <h3>Scenario 1: Clean Up Old Alpine Versions</h3>
-            <pre><code>1. Navigate to Bulk Operations
-2. Repository pattern: alpine
-3. Tag pattern: 3.*
-4. Keep minimum: 2
-5. Enable dry run
-6. Review what would be deleted
-7. Execute deletion</code></pre>
+            <h2>Setup</h2>
 
-            <h3>Scenario 2: Scan for Vulnerabilities</h3>
-            <pre><code>1. Navigate to nginx repository
-2. Click "Scan" on nginx:latest
-3. Wait for scan to complete
-4. View vulnerability badges
-5. Click badge to see CVE details
-6. Filter by severity (Critical, High)
-7. Click CVE ID to view in NVD</code></pre>
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Node.js 20+</li>
+                <li>LDAP Manager running locally</li>
+                <li>Test LDAP server configured</li>
+            </ul>
 
-            <h3>Scenario 3: Layer Inspection</h3>
-            <pre><code>1. Navigate to postgres repository
-2. Click on postgres:16 tag
-3. Click "View Layers"
-4. See layer sizes and commands
-5. View vulnerability counts per layer</code></pre>
+            <h3>Install Playwright</h3>
+            <pre><code>cd frontend
+npm install
+npx playwright install</code></pre>
 
-            <h2>Cleanup</h2>
-            <p>When done testing, clean up everything:</p>
-            <pre><code># Stop and remove all containers
-docker-compose -f docker-compose-multi-registry.yml down -v
+            <p>This installs Playwright and downloads browser binaries (Chrome, Firefox, Safari).</p>
 
-# Remove downloaded images (optional)
-docker image prune -a</code></pre>
+            <h2>Running Tests</h2>
+
+            <h3>Run All Tests</h3>
+            <pre><code>npx playwright test</code></pre>
+
+            <h3>Run Specific Browser</h3>
+            <pre><code># Chrome only
+npx playwright test --project=chromium
+
+# Firefox only
+npx playwright test --project=firefox
+
+# Safari only
+npx playwright test --project=webkit</code></pre>
+
+            <h3>Run Specific Test File</h3>
+            <pre><code>npx playwright test user-lifecycle.spec.ts</code></pre>
+
+            <h3>Run with UI (Interactive Mode)</h3>
+            <pre><code>npx playwright test --ui</code></pre>
+
+            <p>Opens Playwright UI for interactive test running and debugging.</p>
+
+            <h3>Run in Headed Mode (See Browser)</h3>
+            <pre><code>npx playwright test --headed</code></pre>
+
+            <h3>View HTML Report</h3>
+            <pre><code>npx playwright show-report</code></pre>
+
+            <h2>Test Organization</h2>
+
+            <pre><code>frontend/tests/e2e/
+├── dashboard.spec.ts                # Dashboard tests (5)
+├── cluster-details.spec.ts          # Cluster view tests (8)
+├── user-creation.spec.ts            # Form UI tests (7)
+├── user-creation-simple.spec.ts     # Form validation (3)
+├── column-settings.spec.ts          # Column preferences (4)
+├── user-lifecycle.spec.ts           # Full E2E lifecycle (3)
+├── user-edit.spec.ts                # Edit functionality (11)
+├── password-change.spec.ts          # Password change (11)
+└── user-lifecycle-complete.spec.ts  # Complete workflow (5)</code></pre>
+
+            <h2>Writing Tests</h2>
+
+            <h3>Example Test</h3>
+            <pre><code>import { test, expect } from '@playwright/test';
+
+test('should display cluster list', async ({ page }) => {
+  await page.goto('http://localhost:5173');
+  
+  // Check if clusters are displayed
+  await expect(page.locator('.cluster-card')).toBeVisible();
+  
+  // Verify cluster name
+  await expect(page.locator('text=Production LDAP')).toBeVisible();
+});</code></pre>
+
+            <h3>Test Structure</h3>
+            <pre><code>test.describe('Feature Name', () => {
+  test.beforeEach(async ({ page }) => {
+    // Setup before each test
+    await page.goto('http://localhost:5173');
+  });
+
+  test('should do something', async ({ page }) => {
+    // Test implementation
+  });
+
+  test.afterEach(async ({ page }) => {
+    // Cleanup after each test
+  });
+});</code></pre>
+
+            <h2>Test Configuration</h2>
+
+            <h3>playwright.config.ts</h3>
+            <pre><code>import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  use: {
+    baseURL: 'http://localhost:5173',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+  ],
+});</code></pre>
+
+            <h2>Debugging Tests</h2>
+
+            <h3>Debug Mode</h3>
+            <pre><code>npx playwright test --debug</code></pre>
+
+            <p>Opens Playwright Inspector for step-by-step debugging.</p>
+
+            <h3>Pause Test</h3>
+            <pre><code>test('debug test', async ({ page }) => {
+  await page.goto('http://localhost:5173');
+  await page.pause(); // Pauses execution
+  // Continue debugging in browser
+});</code></pre>
+
+            <h3>Screenshots on Failure</h3>
+            <pre><code>use: {
+  screenshot: 'only-on-failure',
+  video: 'retain-on-failure',
+}</code></pre>
+
+            <h2>CI/CD Integration</h2>
+
+            <h3>GitHub Actions Example</h3>
+            <pre><code>name: Playwright Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: cd frontend && npm ci
+      - name: Install Playwright
+        run: cd frontend && npx playwright install --with-deps
+      - name: Run tests
+        run: cd frontend && npx playwright test
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/</code></pre>
+
+            <h2>Best Practices</h2>
+
+            <h3>Test Writing</h3>
+            <ul>
+                <li>Use descriptive test names</li>
+                <li>Keep tests independent</li>
+                <li>Clean up test data</li>
+                <li>Use page object pattern for complex pages</li>
+                <li>Avoid hard-coded waits</li>
+            </ul>
+
+            <h3>Selectors</h3>
+            <ul>
+                <li>Prefer data-testid attributes</li>
+                <li>Use role-based selectors</li>
+                <li>Avoid CSS selectors that may change</li>
+                <li>Use text content for stable elements</li>
+            </ul>
+
+            <h3>Example: Good Selectors</h3>
+            <pre><code>// Good - data-testid
+await page.locator('[data-testid="create-user-button"]').click();
+
+// Good - role
+await page.getByRole('button', { name: 'Create User' }).click();
+
+// Good - text
+await page.locator('text=Create User').click();
+
+// Bad - CSS class (may change)
+await page.locator('.btn-primary').click();</code></pre>
+
+            <h2>Test Data Management</h2>
+
+            <h3>Test User Creation</h3>
+            <pre><code>const testUser = {
+  uid: `testuser_${Date.now()}`,
+  cn: 'Test User',
+  mail: 'test@example.com',
+  password: 'Test123!@#'
+};
+
+// Create user
+await createUser(page, testUser);
+
+// Verify user
+await expect(page.locator(`text=${testUser.uid}`)).toBeVisible();
+
+// Cleanup
+await deleteUser(page, testUser.uid);</code></pre>
+
+            <h2>Performance Testing</h2>
+
+            <h3>Measure Page Load</h3>
+            <pre><code>test('page load performance', async ({ page }) => {
+  const start = Date.now();
+  await page.goto('http://localhost:5173');
+  const loadTime = Date.now() - start;
+  
+  expect(loadTime).toBeLessThan(3000); // 3 seconds
+});</code></pre>
+
+            <h2>Accessibility Testing</h2>
+
+            <h3>Install axe-playwright</h3>
+            <pre><code>npm install --save-dev @axe-core/playwright</code></pre>
+
+            <h3>Run Accessibility Tests</h3>
+            <pre><code>import { test, expect } from '@playwright/test';
+import { injectAxe, checkA11y } from '@axe-core/playwright';
+
+test('should not have accessibility violations', async ({ page }) => {
+  await page.goto('http://localhost:5173');
+  await injectAxe(page);
+  await checkA11y(page);
+});</code></pre>
 
             <h2>Troubleshooting</h2>
 
-            <h3>Script Fails to Pull Images</h3>
+            <h3>Tests Failing Locally</h3>
             <ul>
-                <li>Check internet connectivity</li>
-                <li>Verify Docker Hub is accessible</li>
-                <li>Try running script again (it will skip already pulled images)</li>
+                <li>Ensure LDAP Manager is running</li>
+                <li>Check LDAP server is accessible</li>
+                <li>Verify config.yml is correct</li>
+                <li>Clear browser cache</li>
+                <li>Update Playwright browsers</li>
             </ul>
 
-            <h3>UI Not Accessible</h3>
+            <h3>Flaky Tests</h3>
             <ul>
-                <li>Check if containers are running: <code>docker ps</code></li>
-                <li>Check logs: <code>docker-compose logs registry-ui</code></li>
-                <li>Verify port 5003 is not in use</li>
+                <li>Add proper waits for elements</li>
+                <li>Use <code>waitForLoadState</code></li>
+                <li>Increase timeout for slow operations</li>
+                <li>Check for race conditions</li>
             </ul>
 
-            <h3>Registries Not Showing Images</h3>
+            <h3>Update Browsers</h3>
+            <pre><code>npx playwright install</code></pre>
+
+            <h2>Resources</h2>
             <ul>
-                <li>Ensure populate script completed successfully</li>
-                <li>Check registry logs: <code>docker-compose logs registry-1</code></li>
-                <li>Verify images were pushed: <code>curl http://localhost:5001/v2/_catalog</code></li>
+                <li><a href="https://playwright.dev/" target="_blank">Playwright Documentation</a></li>
+                <li><a href="https://playwright.dev/docs/best-practices" target="_blank">Playwright Best Practices</a></li>
+                <li><a href="https://playwright.dev/docs/debug" target="_blank">Debugging Guide</a></li>
+                <li><a href="https://playwright.dev/docs/ci" target="_blank">CI/CD Integration</a></li>
             </ul>
 
-            <h2>Advanced Testing</h2>
-
-            <h3>Custom Test Images</h3>
-            <p>Add your own test images:</p>
-            <pre><code># Tag and push custom image
-docker tag myapp:latest localhost:5001/myapp:v1.0.0
-docker push localhost:5001/myapp:v1.0.0</code></pre>
-
-            <h3>Test with Authentication</h3>
-            <p>Modify docker-compose-multi-registry.yml to add basic auth to registries and test authentication flow.</p>
-
-            <h2>Automated Testing</h2>
-            <p><strong>Note:</strong> This project currently does not have automated test coverage. Contributions for unit and integration tests are welcome!</p>
+            <h2>Next Steps</h2>
+            <ul>
+                <li><a href="development.html">Learn about development setup</a></li>
+                <li><a href="features.html">Explore all features</a></li>
+                <li><a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">Contribute on GitHub</a></li>
+            </ul>
         </main>
     </div>
 

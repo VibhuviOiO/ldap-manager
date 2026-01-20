@@ -10,11 +10,14 @@
     <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration Guide - Docker Registry UI Multi-Registry Setup</title>
-    <meta name="description" content="Configure Docker Registry UI with multiple registries, authentication (basic auth, bearer token), read-only mode, and environment variables.">
-    <meta name="keywords" content="docker registry configuration, multi-registry setup, docker registry authentication, registry config json, docker registry bearer token">
-    <link rel="canonical" href="https://vibhuvioio.com/docker-registry-ui/configuration.html">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐳</text></svg>">
+    <title>Configuration - LDAP Manager</title>
+    <meta name="description" content="Complete configuration guide for LDAP Manager: single node, multi-master clusters, user creation forms, table columns, and environment variables.">
+    <meta name="keywords" content="ldap manager configuration, ldap config, openldap setup, ldap yaml config">
+    <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/configuration.html">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="docs.css">
 </head>
@@ -25,14 +28,14 @@
     <!-- End Google Tag Manager (noscript) -->
     <nav class="navbar">
         <div class="container">
-            <a href="https://vibhuvioio.com/docker-registry-ui/" class="nav-brand" style="text-decoration: none; color: inherit;">
-                <span class="logo">🐳</span>
-                <span class="brand-name">Docker Registry UI</span>
+            <a href="index.html" class="nav-brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 12px;">
+                <img src="img/ldap.png" alt="LDAP Manager" style="height: 40px; width: auto;">
+                <span class="brand-name">LDAP Manager</span>
             </a>
             <div class="nav-links">
                 <a href="index.html">Home</a>
                 <a href="getting-started.html">Docs</a>
-                <a href="https://github.com/vibhuvi/docker-registry-ui" target="_blank">GitHub</a>
+                <a href="https://github.com/VibhuviOiO/ldap-manager" target="_blank">GitHub</a>
             </div>
         </div>
     </nav>
@@ -48,17 +51,11 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
-                    <a href="security.html">Security Scanning</a>
-                    <a href="bulk-operations.html">Bulk Operations</a>
                 </div>
                 <div class="nav-section">
-                    <h3>Examples</h3>
-                    <a href="example-multi-registry.html">Multi-Registry Setup</a>
-                    <a href="example-basic-auth.html">Basic Auth Registry</a>
-                </div>
-                <div class="nav-section">
-                    <h3>Reference</h3>
-                    <a href="api.html">API Integration</a>
+                    <h3>Contributing</h3>
+                    
+                    
                     <a href="development.html">Development</a>
                     <a href="testing.html">Testing Guide</a>
                 </div>
@@ -67,166 +64,515 @@
 
         <main class="docs-content">
             <h1>Configuration Guide</h1>
+            <p>Complete guide to configuring LDAP Manager for your environment.</p>
 
-            <h2>Configuration Methods</h2>
-            <p>You can configure registries in two ways:</p>
+            <h2>Configuration Approaches</h2>
+            <p>LDAP Manager supports two configuration approaches:</p>
             <ul>
-                <li><strong>Setup Wizard</strong>: On first run, the UI shows a setup wizard to configure your registry through the web interface</li>
-                <li><strong>Config File</strong>: Pre-create a <code>registries.config.json</code> file for automated deployments</li>
+                <li><strong>Minimal Configuration</strong> - Quick setup with auto-detection (recommended for beginners)</li>
+                <li><strong>Custom Configuration</strong> - Full control over forms and columns (for advanced users)</li>
             </ul>
 
-            <h2>Environment Variables</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Variable</th>
-                        <th>Description</th>
-                        <th>Default</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                          <td><code>CONFIG_FILE</code></td>
-                          <td>Path to registries configuration file (optional - setup wizard used if not provided). By default the app checks <code>/app/registries.config.json</code>. When running inside the official container it is common to set this to <code>/app/data/registries.config.json</code> (for example by mounting <code>./data:/app/data</code>).</td>
-                          <td><code>/app/registries.config.json</code></td>
-                        </tr>
-                    <tr>
-                        <td><code>READ_ONLY</code></td>
-                        <td>Enable read-only mode (disable delete operations)</td>
-                        <td><code>false</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>PORT</code></td>
-                        <td>Port for the web interface</td>
-                        <td><code>5000</code></td>
-                    </tr>
+            <h2>Minimal Configuration (Recommended)</h2>
+            <p>The simplest way to get started. The UI automatically detects and shows common LDAP attributes.</p>
 
-                </tbody>
+            <h3>Single Node Example</h3>
+            <pre><code>clusters:
+  - name: "Production LDAP"
+    host: "ldap.company.com"
+    port: 389
+    bind_dn: "cn=Manager,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"  # Optional - auto-discovered if omitted
+    description: "Main production LDAP server"
+    readonly: false</code></pre>
+
+            <h3>Multiple Clusters</h3>
+            <pre><code>clusters:
+  - name: "Production LDAP"
+    host: "ldap.company.com"
+    port: 389
+    bind_dn: "cn=admin,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"
+    description: "Production environment"
+    readonly: false
+
+  - name: "Development LDAP"
+    host: "ldap-dev.company.com"
+    port: 389
+    bind_dn: "cn=admin,dc=dev,dc=company,dc=com"
+    base_dn: "dc=dev,dc=company,dc=com"
+    description: "Development environment"
+    readonly: false</code></pre>
+
+            <div class="note">
+                <strong>What you get automatically:</strong>
+                <ul>
+                    <li><strong>Users table:</strong> Username, Full Name, Email, Type</li>
+                    <li><strong>Groups table:</strong> Group Name, Description, Members</li>
+                    <li><strong>OUs table:</strong> OU Name, Description, DN</li>
+                    <li>Users can click "Columns" button to show/hide additional attributes</li>
+                </ul>
+            </div>
+
+            <h2>Multi-Master Cluster Configuration</h2>
+            <p>For multi-master LDAP clusters with multiple nodes:</p>
+
+            <pre><code>clusters:
+  - name: "LDAP Cluster"
+    description: "3-node multi-master cluster"
+    nodes:
+      - host: "ldap1.company.com"
+        port: 389
+        name: "node1"
+      - host: "ldap2.company.com"
+        port: 389
+        name: "node2"
+      - host: "ldap3.company.com"
+        port: 389
+        name: "node3"
+    bind_dn: "cn=Manager,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"
+    readonly: false</code></pre>
+
+            <h3>Features:</h3>
+            <ul>
+                <li>Health monitoring for all nodes</li>
+                <li>Replication topology visualization</li>
+                <li>Automatic failover to healthy nodes</li>
+                <li>Sync status monitoring</li>
+            </ul>
+
+            <h2>Docker Host Connection</h2>
+            <p>For connecting to LDAP running on the Docker host machine:</p>
+
+            <h3>Docker Desktop (Mac/Windows)</h3>
+            <pre><code>clusters:
+  - name: "Local Docker LDAP"
+    host: "host.docker.internal"
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"</code></pre>
+
+            <h3>Linux Docker</h3>
+            <pre><code>clusters:
+  - name: "Local Docker LDAP"
+    host: "172.17.0.1"  # Default Docker bridge IP
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"</code></pre>
+
+            <h2>User Creation Form Configuration</h2>
+            <p>Define custom user creation forms with auto-fill fields and validation.</p>
+
+            <h3>Basic User Creation Form</h3>
+            <pre><code>clusters:
+  - name: "Corporate LDAP"
+    host: "ldap.company.com"
+    port: 389
+    bind_dn: "cn=admin,dc=company,dc=com"
+    
+    user_creation_form:
+      base_ou: "ou=People,dc=company,dc=com"
+      object_classes:
+        - inetOrgPerson
+        - posixAccount
+      fields:
+        - name: uid
+          label: Username
+          type: text
+          required: true
+        - name: cn
+          label: Full Name
+          type: text
+          required: true
+        - name: mail
+          label: Email
+          type: email
+          required: true
+          auto_generate: "${uid}@company.com"
+        - name: userPassword
+          label: Password
+          type: password
+          required: true</code></pre>
+
+            <h3>Advanced Form with Auto-Generation</h3>
+            <pre><code>    user_creation_form:
+      base_ou: "ou=People,dc=company,dc=com"
+      object_classes:
+        - inetOrgPerson
+        - posixAccount
+        - shadowAccount
+      fields:
+        - name: uid
+          label: Username
+          type: text
+          required: true
+        - name: cn
+          label: Full Name
+          type: text
+          required: true
+        - name: sn
+          label: Last Name
+          type: text
+          required: true
+        - name: givenName
+          label: First Name
+          type: text
+          required: true
+        - name: mail
+          label: Email
+          type: email
+          required: true
+          auto_generate: "${uid}@company.com"
+        - name: userPassword
+          label: Password
+          type: password
+          required: true
+        - name: uidNumber
+          label: UID Number
+          type: number
+          required: true
+          auto_generate: "next_uid"
+          readonly: true
+        - name: gidNumber
+          label: Group ID
+          type: number
+          required: true
+          default: 100
+        - name: homeDirectory
+          label: Home Directory
+          type: text
+          required: true
+          auto_generate: "/home/${uid}"
+        - name: loginShell
+          label: Shell
+          type: text
+          required: true
+          default: "/bin/bash"</code></pre>
+
+            <h3>Field Types</h3>
+            <table>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+                <tr>
+                    <td><code>text</code></td>
+                    <td>Single-line text input</td>
+                    <td>Username, Name</td>
+                </tr>
+                <tr>
+                    <td><code>email</code></td>
+                    <td>Email with validation</td>
+                    <td>user@example.com</td>
+                </tr>
+                <tr>
+                    <td><code>password</code></td>
+                    <td>Password input (hidden)</td>
+                    <td>User password</td>
+                </tr>
+                <tr>
+                    <td><code>number</code></td>
+                    <td>Numeric input</td>
+                    <td>UID, GID</td>
+                </tr>
+                <tr>
+                    <td><code>select</code></td>
+                    <td>Dropdown selection</td>
+                    <td>Department, Role</td>
+                </tr>
             </table>
 
-            <h2>Setup Wizard (First Run)</h2>
-            <p>If no configuration file exists, the UI displays a setup wizard on first access:</p>
-            <img src="img/setup-wizard.png" alt="Setup Wizard First Run" style="max-width: 100%; border: 1px solid #e3e8ef; border-radius: 5px; margin: 20px 0;">
-            <ol>
-                <li>Access the UI at <code>http://localhost:5000</code></li>
-                <li>Enter registry details:
-                    <ul>
-                        <li><strong>Registry Name</strong>: Friendly name (e.g., "Local Registry")</li>
-                        <li><strong>Registry URL</strong>: API endpoint (e.g., <code>http://localhost:5001</code>)</li>
-                        <li><strong>Authentication</strong>: Enable if registry requires credentials</li>
-                    </ul>
-                </li>
-                <li>Click "Test Connection" to verify</li>
-                <li>Save configuration</li>
-                <li>Configuration is saved to the directory containing the configured <code>CONFIG_FILE</code> (for example if <code>CONFIG_FILE=/app/data/registries.config.json</code>, files are saved under <code>/app/data</code>).</li>
-            </ol>
+            <h3>Auto-Generate Options</h3>
+            <table>
+                <tr>
+                    <th>Value</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+                <tr>
+                    <td><code>${uid}@company.com</code></td>
+                    <td>Template with variable substitution</td>
+                    <td>john@company.com</td>
+                </tr>
+                <tr>
+                    <td><code>next_uid</code></td>
+                    <td>Auto-generate next available UID</td>
+                    <td>1001, 1002, 1003...</td>
+                </tr>
+                <tr>
+                    <td><code>/home/${uid}</code></td>
+                    <td>Path with variable</td>
+                    <td>/home/john</td>
+                </tr>
+            </table>
 
-            <h2>Manual Configuration File</h2>
-            <p>For automated deployments, create a <code>registries.config.json</code> file before starting the UI:</p>
+            <h2>Table Columns Configuration</h2>
+            <p>Control which columns are visible by default in tables.</p>
 
-            <h3>Create the config file (example)</h3>
-            <p>Create a directory to hold the config (for example <code>./data</code>) and add a file named <code>registries.config.json</code>. The application will read whatever path you point <code>CONFIG_FILE</code> at (see environment variables above). Example minimal file:</p>
-            <pre><code>mkdir -p data
-cat > ./data/registries.config.json <<'JSON'
-{
-  "registries": [
-    {
-      "name": "Local Registry",
-      "api": "http://localhost:5001",
-      "auth": { "type": "none" }
-    }
-  ]
-}
-JSON</code></pre>
+            <h3>Users Table Columns</h3>
+            <pre><code>    table_columns:
+      users:
+        - name: uid
+          label: Username
+          default_visible: true
+        - name: cn
+          label: Full Name
+          default_visible: true
+        - name: mail
+          label: Email
+          default_visible: true
+        - name: uidNumber
+          label: UID
+          default_visible: false    # Hidden by default
+        - name: gidNumber
+          label: GID
+          default_visible: false    # Hidden by default
+        - name: homeDirectory
+          label: Home Directory
+          default_visible: false    # Hidden by default
+        - name: loginShell
+          label: Shell
+          default_visible: false    # Hidden by default
+        - name: objectClass
+          label: Type
+          default_visible: true</code></pre>
 
-            <p>When launching the container, mount the <code>data</code> directory and set <code>CONFIG_FILE=/app/data/registries.config.json</code> so the app finds the file and persists scan results in the same directory.</p>
+            <h3>Groups Table Columns</h3>
+            <pre><code>      groups:
+        - name: cn
+          label: Group Name
+          default_visible: true
+        - name: description
+          label: Description
+          default_visible: true
+        - name: members
+          label: Members
+          default_visible: true
+        - name: gidNumber
+          label: GID
+          default_visible: false
+        - name: dn
+          label: DN
+          default_visible: false</code></pre>
 
-            <h3>Local Registry (No Authentication)</h3>
-            <pre><code>{
-  "registries": [
-    {
-      "name": "Local Registry",
-      "api": "http://localhost:5001",
-      "auth": {
-        "type": "none"
-      }
-    }
-  ]
-}</code></pre>
+            <h3>OUs Table Columns</h3>
+            <pre><code>      ous:
+        - name: ou
+          label: OU Name
+          default_visible: true
+        - name: description
+          label: Description
+          default_visible: true
+        - name: dn
+          label: DN
+          default_visible: true</code></pre>
 
-            <h3>Registry with Basic Authentication</h3>
-            <pre><code>{
-  "registries": [
-    {
-      "name": "Private Registry",
-      "api": "https://registry.example.com",
-      "auth": {
-        "type": "basic",
-        "username": "admin",
-        "password": "secret"
-      }
-    }
-  ]
-}</code></pre>
+            <div class="note">
+                <strong>Note:</strong> Users can always customize column visibility via the "Columns" button (⚙️) in the UI. The <code>default_visible</code> setting only controls the initial state.
+            </div>
 
-            <h3>Multiple Registries</h3>
-            <pre><code>{
-  "registries": [
-    {
-      "name": "Local Registry",
-      "api": "http://localhost:5001",
-      "auth": {
-        "type": "none"
-      }
-    },
-    {
-      "name": "Production Registry",
-      "api": "https://registry.prod.example.com",
-      "auth": {
-        "type": "basic",
-        "username": "admin",
-        "password": "prod-secret"
-      }
-    }
-  ]
-}</code></pre>
+            <h2>Custom Schema Example</h2>
+            <p>Full example with custom objectClass and attributes:</p>
 
-            <h2>Docker Compose Configuration</h2>
-            <p>Complete example with registry and UI:</p>
-            <pre><code>version: '3.8'
+            <pre><code>clusters:
+  - name: "Custom Schema LDAP"
+    host: "ldap.example.com"
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"
+    base_dn: "dc=example,dc=com"
+    readonly: false
+    
+    user_creation_form:
+      base_ou: "ou=People,dc=example,dc=com"
+      object_classes:
+        - inetOrgPerson
+        - posixAccount
+        - CustomEmployee  # Custom objectClass
+      fields:
+        - name: uid
+          label: Username
+          type: text
+          required: true
+        - name: cn
+          label: Full Name
+          type: text
+          required: true
+        - name: mail
+          label: Email
+          type: email
+          required: true
+        - name: userPassword
+          label: Password
+          type: password
+          required: true
+        # Custom attributes
+        - name: department
+          label: Department
+          type: select
+          required: true
+          options:
+            - Engineering
+            - Sales
+            - Marketing
+        - name: employeeID
+          label: Employee ID
+          type: text
+          required: true
+        - name: location
+          label: Location
+          type: text
+          required: false
+    
+    table_columns:
+      users:
+        - name: uid
+          label: Username
+          default_visible: true
+        - name: cn
+          label: Full Name
+          default_visible: true
+        - name: mail
+          label: Email
+          default_visible: true
+        - name: department
+          label: Department
+          default_visible: true      # Custom attribute
+        - name: employeeID
+          label: Employee ID
+          default_visible: true      # Custom attribute
+        - name: location
+          label: Location
+          default_visible: false     # Custom attribute (hidden)</code></pre>
 
-services:
-  registry:
-    image: registry:2
+            <h2>Environment Variables</h2>
+            <p>Configure LDAP Manager behavior using environment variables in docker-compose.yml:</p>
+
+            <pre><code>services:
+  ldap-manager:
+    image: ghcr.io/vibhuvioio/ldap-manager:latest
     ports:
-      - "5001:5000"
-    environment:
-      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      - "5173:5173"
+      - "8000:8000"
     volumes:
-      - registry-data:/var/lib/registry
-
-  registry-ui:
-    image: ghcr.io/vibhuvioio/docker-registry-ui:latest
-    ports:
-      - "5000:5000"
+      - ./config.yml:/app/config.yml
     environment:
-      - CONFIG_FILE=/app/data/registries.config.json
-      - READ_ONLY=false
-    volumes:
-      - ./data:/app/data
-    depends_on:
-      - registry
+      - PYTHONUNBUFFERED=1
+      - VITE_FOOTER_TEXT=LDAP Manager • My Company</code></pre>
 
-volumes:
-  registry-data:</code></pre>
+            <h3>Available Variables</h3>
+            <table>
+                <tr>
+                    <th>Variable</th>
+                    <th>Description</th>
+                    <th>Default</th>
+                </tr>
+                <tr>
+                    <td><code>PYTHONUNBUFFERED</code></td>
+                    <td>Python output buffering</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td><code>VITE_FOOTER_TEXT</code></td>
+                    <td>Custom footer text (HTML allowed)</td>
+                    <td>LDAP Manager</td>
+                </tr>
+            </table>
 
-            <h2>Security Considerations</h2>
+            <h2>Configuration Best Practices</h2>
+
+            <h3>Start Simple</h3>
             <ul>
-                <li>Store credentials securely (use Docker secrets or environment variables)</li>
-                <li>Use HTTPS for production registries</li>
-                <li>Enable read-only mode in production environments</li>
-                <li>Restrict network access to the UI</li>
-                <li>Regularly update the UI and Trivy scanner</li>
+                <li>Begin with minimal configuration</li>
+                <li>Add custom forms only when needed</li>
+                <li>Let UI auto-detect columns initially</li>
+                <li>Customize based on user feedback</li>
+            </ul>
+
+            <h3>Security</h3>
+            <ul>
+                <li>Use <code>readonly: true</code> for read-only access</li>
+                <li>Restrict bind DN permissions</li>
+                <li>Use strong passwords</li>
+                <li>Enable TLS/SSL in production</li>
+            </ul>
+
+            <h3>Performance</h3>
+            <ul>
+                <li>Specify <code>base_dn</code> to avoid auto-discovery overhead</li>
+                <li>Limit visible columns to improve load times</li>
+                <li>Use server-side pagination for large directories</li>
+            </ul>
+
+            <h2>Complete Example</h2>
+            <p>Production-ready configuration with all features:</p>
+
+            <pre><code>clusters:
+  # Production cluster with full configuration
+  - name: "Production LDAP Cluster"
+    description: "Main production directory"
+    nodes:
+      - host: "ldap1.company.com"
+        port: 389
+        name: "node1"
+      - host: "ldap2.company.com"
+        port: 389
+        name: "node2"
+      - host: "ldap3.company.com"
+        port: 389
+        name: "node3"
+    bind_dn: "cn=Manager,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"
+    readonly: false
+    
+    user_creation_form:
+      base_ou: "ou=People,dc=company,dc=com"
+      object_classes: [inetOrgPerson, posixAccount]
+      fields:
+        - name: uid
+          label: Username
+          type: text
+          required: true
+        - name: cn
+          label: Full Name
+          type: text
+          required: true
+        - name: mail
+          label: Email
+          type: email
+          required: true
+          auto_generate: "${uid}@company.com"
+        - name: userPassword
+          label: Password
+          type: password
+          required: true
+    
+    table_columns:
+      users:
+        - name: uid
+          label: Username
+          default_visible: true
+        - name: cn
+          label: Full Name
+          default_visible: true
+        - name: mail
+          label: Email
+          default_visible: true
+        - name: objectClass
+          label: Type
+          default_visible: true
+
+  # Development cluster with minimal config
+  - name: "Development LDAP"
+    host: "ldap-dev.company.com"
+    port: 389
+    bind_dn: "cn=admin,dc=dev,dc=company,dc=com"
+    readonly: false</code></pre>
+
+            <h2>Next Steps</h2>
+            <ul>
+                <li><a href="features.html">Explore all features</a></li>
+                <li><a href="security.html">Review security best practices</a></li>
+                <li><a href="api.html">Learn about API endpoints</a></li>
             </ul>
         </main>
     </div>
