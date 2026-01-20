@@ -44,12 +44,12 @@ jobs:
       run: |
         echo "org_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
-    - name: Extract version from version.py
+    - name: Extract version from package.json
       id: version
       run: |
-        VERSION=$(grep -oP '__version__ = "\K[^"]+' app/version.py)
+        VERSION=$(jq -r '.version' frontend/package.json)
         echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "Extracted version: $VERSION"
+        echo "Using version: $VERSION"
 
     - name: Extract metadata for Docker
       id: meta
