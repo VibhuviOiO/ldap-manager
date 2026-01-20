@@ -7,6 +7,7 @@ services:
       - "5173:5173"
     environment:
       - PYTHONUNBUFFERED=1
+      - CONTEXT_PATH=${CONTEXT_PATH:-}
       - VITE_FOOTER_TEXT=${VITE_FOOTER_TEXT:-LDAP Manager • Built by <a href="https://vibhuvioio.com" target="_blank" class="text-primary hover:underline">Vibhuvi OiO</a>}
     volumes:
       - ./backend/app:/app/app

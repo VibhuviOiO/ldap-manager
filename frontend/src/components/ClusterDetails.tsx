@@ -1,32 +1,29 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Search, Users, FolderTree, Building2, Database as DatabaseIcon, Activity, BarChart3, Plus } from 'lucide-react'
+import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { Search, Users, FolderTree, Building2, Database as DatabaseIcon, Activity, BarChart3, Plus } from 'lucide-react'
 import { Button } from './ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent } from './ui/card'
 import { Input } from './ui/input'
 import DirectoryTable from './DirectoryTable'
-import MonitoringView from './MonitoringView'
-import ActivityLogView from './ActivityLogView'
 import CreateUserDialog from './CreateUserDialog'
 import EditUserDialog from './EditUserDialog'
 import ChangePasswordDialog from './ChangePasswordDialog'
 import ColumnSettings from './ColumnSettings'
-import axios from 'axios'
+import { clusterService, entryService } from '@/services'
+import { DialogProvider, useDialogs } from '@/contexts/DialogContext'
+import { toast, getErrorMessage } from '@/lib/toast'
+import { TableColumns, Column } from '@/types'
 
-interface Column {
-  name: string
-  label: string
-  default_visible: boolean
-}
+const MonitoringView = lazy(() => import('./MonitoringView'))
+const ActivityLogView = lazy(() => import('./ActivityLogView'))
 
-export default function ClusterDetails() {
+function ClusterDetailsInner() {
   const { clusterName } = useParams<{ clusterName: string }>()
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [activeView, setActiveView] = useState<'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity'>(() => {
+  const activeView = useMemo(() => {
     const view = searchParams.get('view')
     return (view as any) || 'users'
-  })
+  }, [searchParams])
   const [entries, setEntries] = useState<any[]>([])
   const [monitoring, setMonitoring] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -35,19 +32,15 @@ export default function ClusterDetails() {
   const [pageSize, setPageSize] = useState(10)
   const [totalEntries, setTotalEntries] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
-  const [editingEntry, setEditingEntry] = useState<any>(null)
-  const [passwordEntry, setPasswordEntry] = useState<any>(null)
   const [clusterConfig, setClusterConfig] = useState<any>(null)
-  const [tableColumns, setTableColumns] = useState<Record<string, Column[]>>({})
+  const [tableColumns, setTableColumns] = useState<TableColumns>({})
   const [visibleColumns, setVisibleColumns] = useState<Record<string, string[]>>({})
 
+  const { openCreateDialog, openEditDialog, openPasswordDialog, showCreateDialog, showEditDialog, showPasswordDialog, editingEntry, passwordEntry, closeCreateDialog, closeEditDialog, closePasswordDialog } = useDialogs()
+
   const handleViewChange = (view: 'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity') => {
-    setActiveView(view)
     setSearchParams({ view })
-    setPage(1) // Reset to page 1 when changing views
+    setPage(1)
   }
 
   useEffect(() => {
@@ -58,33 +51,54 @@ export default function ClusterDetails() {
 
   useEffect(() => {
     if (['users', 'groups', 'ous', 'all'].includes(activeView)) {
-      setLoading(true)
-      setEntries([])
+      loadClusterData()
+    }
+  }, [clusterName, activeView, page, pageSize])
+
+  useEffect(() => {
+    if (searchQuery) {
       const timer = setTimeout(() => {
+        setPage(1)
         loadClusterData()
-      }, 500)
+      }, 300)
       return () => clearTimeout(timer)
     }
-  }, [clusterName, activeView, page, searchQuery, pageSize])
+  }, [searchQuery])
 
   const loadTableColumns = async () => {
     try {
-      const res = await axios.get(`/api/clusters/columns/${clusterName}`)
-      setTableColumns(res.data)
+      const data = await clusterService.getClusterColumns(clusterName!)
+      setTableColumns(data)
       
-      // Load saved preferences from localStorage or use defaults
       const savedPrefs = localStorage.getItem(`ldap-columns-${clusterName}`)
       if (savedPrefs) {
-        setVisibleColumns(JSON.parse(savedPrefs))
+        try {
+          setVisibleColumns(JSON.parse(savedPrefs))
+        } catch {
+          console.error('Failed to parse saved preferences')
+          const defaults: Record<string, string[]> = {}
+          Object.keys(data).forEach(view => {
+            defaults[view] = (data[view] || [])
+              .filter((col: Column) => col.default_visible)
+              .map((col: Column) => col.name)
+          })
+          setVisibleColumns(defaults)
+        }
       } else {
-        // Initialize with default visible columns
         const defaults: Record<string, string[]> = {}
-        Object.keys(res.data).forEach(view => {
-          defaults[view] = res.data[view]
+        Object.keys(data).forEach(view => {
+          defaults[view] = (data[view] || [])
             .filter((col: Column) => col.default_visible)
             .map((col: Column) => col.name)
         })
         setVisibleColumns(defaults)
+        setTimeout(() => {
+          try {
+            localStorage.setItem(`ldap-columns-${clusterName}`, JSON.stringify(defaults))
+          } catch (err) {
+            console.error('Failed to save to localStorage', err)
+          }
+        }, 100)
       }
     } catch (err) {
       console.error('Failed to load table columns', err)
@@ -94,26 +108,30 @@ export default function ClusterDetails() {
   const handleColumnsChange = (view: string, columns: string[]) => {
     const updated = { ...visibleColumns, [view]: columns }
     setVisibleColumns(updated)
-    localStorage.setItem(`ldap-columns-${clusterName}`, JSON.stringify(updated))
+    setTimeout(() => {
+      try {
+        localStorage.setItem(`ldap-columns-${clusterName}`, JSON.stringify(updated))
+      } catch (err) {
+        console.error('Failed to save to localStorage', err)
+      }
+    }, 100)
   }
 
   const loadClusterData = async () => {
     setLoading(true)
     try {
       const filterType = activeView === 'all' ? '' : activeView
-      const res = await axios.get(`/api/entries/search`, {
-        params: {
-          cluster: clusterName,
-          page,
-          page_size: pageSize,
-          filter_type: filterType,
-          search: searchQuery || undefined
-        }
+      const result = await entryService.searchEntries({
+        cluster: clusterName!,
+        page,
+        page_size: Math.min(pageSize, 100), // Limit to 100 entries max
+        filter_type: filterType,
+        search: searchQuery || undefined
       })
       
-      setEntries(res.data.entries || [])
-      setTotalEntries(res.data.total || 0)
-      setHasMore(res.data.has_more || false)
+      setEntries(result.entries || [])
+      setTotalEntries(result.total || 0)
+      setHasMore(result.has_more || false)
     } catch (err: any) {
       console.error('Failed to load cluster data', err)
       const errorMsg = err.response?.data?.detail || 'Failed to load data'
@@ -127,15 +145,14 @@ export default function ClusterDetails() {
     setLoading(false)
   }
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setSearchQuery(value)
-    setPage(1)
-  }
+  }, [])
 
   const loadMonitoring = async () => {
     try {
-      const res = await axios.get(`/api/clusters/health/${clusterName}`)
-      setMonitoring(res.data)
+      const data = await clusterService.getClusterHealth(clusterName!)
+      setMonitoring(data)
     } catch (err) {
       console.error('Failed to load monitoring data', err)
       setMonitoring({ status: 'error', message: 'Failed to check cluster health' })
@@ -144,8 +161,8 @@ export default function ClusterDetails() {
 
   const loadClusterConfig = async () => {
     try {
-      const res = await axios.get('/api/clusters/list')
-      const cluster = res.data.clusters.find((c: any) => c.name === clusterName)
+      const clusters = await clusterService.getClusters()
+      const cluster = clusters.find((c) => c.name === clusterName)
       setClusterConfig(cluster)
     } catch (err) {
       console.error('Failed to load cluster config', err)
@@ -155,32 +172,23 @@ export default function ClusterDetails() {
   const handleDelete = async (dn: string) => {
     if (!confirm(`Delete user ${dn}?`)) return
     
+    // Optimistic update - remove from UI immediately
+    const previousEntries = entries
+    setEntries(entries.filter(e => e.dn !== dn))
+    
     try {
-      await axios.delete('/api/entries/delete', {
-        params: { cluster_name: clusterName, dn }
-      })
-      loadClusterData()
+      await entryService.deleteEntry(clusterName!, dn)
+      toast.success('User deleted successfully')
+      loadClusterData() // Refresh to get accurate count
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete user')
+      // Rollback on error
+      setEntries(previousEntries)
+      const errorMsg = getErrorMessage(err)
+      toast.error(`Failed to delete user: ${errorMsg}`)
     }
   }
 
-  const handleEdit = (entry: any) => {
-    setEditingEntry(entry)
-    setShowEditDialog(true)
-  }
-
-  const handleChangePassword = (entry: any) => {
-    setPasswordEntry(entry)
-    setShowPasswordDialog(true)
-  }
-
-  const isDirectoryView = ['users', 'groups', 'ous', 'all'].includes(activeView)
-  const getStatusClass = () => {
-    if (monitoring?.status === 'healthy') return 'bg-primary/10 text-primary'
-    if (monitoring?.status === 'warning') return 'bg-yellow-500/10 text-yellow-600'
-    return 'bg-destructive/10 text-destructive'
-  }
+  const isDirectoryView = useMemo(() => ['users', 'groups', 'ous', 'all'].includes(activeView), [activeView])
   const getNavClass = (view: string) => {
     return `flex items-center space-x-2 px-6 py-3.5 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
       activeView === view 
@@ -191,44 +199,44 @@ export default function ClusterDetails() {
 
   return (
     <div className="space-y-0">
-      <div className="bg-card border-b sticky top-[73px] z-40">
+      <nav className="bg-card border-b sticky top-[73px] z-40" aria-label="Cluster navigation">
         <div className="container mx-auto px-6">
-          <div className="flex overflow-x-auto scrollbar-hide">
-            <button onClick={() => handleViewChange('users')} className={getNavClass('users')}>
-              <Users className="h-4 w-4" />
+          <div className="flex overflow-x-auto scrollbar-hide" role="tablist">
+            <button onClick={() => handleViewChange('users')} className={getNavClass('users')} role="tab" aria-selected={activeView === 'users'}>
+              <Users className="h-4 w-4" aria-hidden="true" />
               <span>Users</span>
             </button>
-            <button onClick={() => handleViewChange('groups')} className={getNavClass('groups')}>
-              <FolderTree className="h-4 w-4" />
+            <button onClick={() => handleViewChange('groups')} className={getNavClass('groups')} role="tab" aria-selected={activeView === 'groups'}>
+              <FolderTree className="h-4 w-4" aria-hidden="true" />
               <span>Groups</span>
             </button>
-            <button onClick={() => handleViewChange('ous')} className={getNavClass('ous')}>
-              <Building2 className="h-4 w-4" />
+            <button onClick={() => handleViewChange('ous')} className={getNavClass('ous')} role="tab" aria-selected={activeView === 'ous'}>
+              <Building2 className="h-4 w-4" aria-hidden="true" />
               <span>Organizational Units</span>
             </button>
-            <button onClick={() => handleViewChange('all')} className={getNavClass('all')}>
-              <DatabaseIcon className="h-4 w-4" />
+            <button onClick={() => handleViewChange('all')} className={getNavClass('all')} role="tab" aria-selected={activeView === 'all'}>
+              <DatabaseIcon className="h-4 w-4" aria-hidden="true" />
               <span>All Entries</span>
             </button>
-            <button onClick={() => handleViewChange('monitoring')} className={getNavClass('monitoring')}>
-              <BarChart3 className="h-4 w-4" />
+            <button onClick={() => handleViewChange('monitoring')} className={getNavClass('monitoring')} role="tab" aria-selected={activeView === 'monitoring'}>
+              <BarChart3 className="h-4 w-4" aria-hidden="true" />
               <span>Monitoring</span>
             </button>
-            <button onClick={() => handleViewChange('activity')} className={getNavClass('activity')}>
-              <Activity className="h-4 w-4" />
+            <button onClick={() => handleViewChange('activity')} className={getNavClass('activity')} role="tab" aria-selected={activeView === 'activity'}>
+              <Activity className="h-4 w-4" aria-hidden="true" />
               <span>Activity Log</span>
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
       <div className="container mx-auto px-6 py-6 space-y-6">
 
       {monitoring && monitoring.status !== 'healthy' && (
-        <Card className="border-l-4 border-l-destructive shadow-sm">
+        <Card className="border-l-4 border-l-destructive shadow-sm" role="alert">
           <CardContent className="p-4">
             <div className="flex items-start space-x-3">
-              <div className="text-destructive mt-0.5">⚠</div>
+              <div className="text-destructive mt-0.5" aria-hidden="true">⚠</div>
               <div>
                 <p className="font-medium text-sm">{monitoring.status === 'error' ? 'Connection Error' : 'Configuration Required'}</p>
                 <p className="text-sm text-muted-foreground mt-1">{monitoring.message}</p>
@@ -249,8 +257,8 @@ export default function ClusterDetails() {
             </h2>
             <div className="flex items-center space-x-3">
               {!clusterConfig?.readonly && activeView === 'users' && (
-                <Button onClick={() => setShowCreateDialog(true)} size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
+                <Button onClick={openCreateDialog} size="sm" aria-label="Create new user">
+                  <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                   Create User
                 </Button>
               )}
@@ -262,13 +270,14 @@ export default function ClusterDetails() {
                 />
               )}
               <div className="relative w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <Input
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
+                  aria-label="Search directory entries"
                 />
               </div>
             </div>
@@ -289,21 +298,25 @@ export default function ClusterDetails() {
             columns={tableColumns[activeView]}
             visibleColumns={visibleColumns[activeView]}
             onDelete={handleDelete}
-            onEdit={handleEdit}
-            onChangePassword={handleChangePassword}
+            onEdit={openEditDialog}
+            onChangePassword={openPasswordDialog}
             readonly={clusterConfig?.readonly}
           />
         </div>
       ) : activeView === 'monitoring' ? (
-        <MonitoringView clusterName={clusterName || ''} />
+        <Suspense fallback={<div>Loading monitoring...</div>}>
+          <MonitoringView clusterName={clusterName || ''} />
+        </Suspense>
       ) : (
-        <ActivityLogView />
+        <Suspense fallback={<div>Loading activity log...</div>}>
+          <ActivityLogView />
+        </Suspense>
       )}
 
       {showCreateDialog && (
         <CreateUserDialog
           open={showCreateDialog}
-          onClose={() => setShowCreateDialog(false)}
+          onClose={closeCreateDialog}
           clusterName={clusterName || ''}
           baseDn={clusterConfig?.base_dn || ''}
           onSuccess={() => loadClusterData()}
@@ -313,10 +326,7 @@ export default function ClusterDetails() {
       {showEditDialog && editingEntry && (
         <EditUserDialog
           open={showEditDialog}
-          onClose={() => {
-            setShowEditDialog(false)
-            setEditingEntry(null)
-          }}
+          onClose={closeEditDialog}
           clusterName={clusterName || ''}
           entry={editingEntry}
           onSuccess={() => loadClusterData()}
@@ -326,10 +336,7 @@ export default function ClusterDetails() {
       {showPasswordDialog && passwordEntry && (
         <ChangePasswordDialog
           open={showPasswordDialog}
-          onClose={() => {
-            setShowPasswordDialog(false)
-            setPasswordEntry(null)
-          }}
+          onClose={closePasswordDialog}
           clusterName={clusterName || ''}
           entry={passwordEntry}
           onSuccess={() => loadClusterData()}
@@ -337,5 +344,13 @@ export default function ClusterDetails() {
       )}
       </div>
     </div>
+  )
+}
+
+export default function ClusterDetails() {
+  return (
+    <DialogProvider>
+      <ClusterDetailsInner />
+    </DialogProvider>
   )
 }
