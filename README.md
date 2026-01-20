@@ -30,7 +30,7 @@ Modern web-based management interface for OpenLDAP servers with React + TypeScri
 - React 18 + TypeScript
 - shadcn/ui components
 - Responsive design
-- Green theme (customizable)
+- Professional blue theme
 
 ## Quick Start
 

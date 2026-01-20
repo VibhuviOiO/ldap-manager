@@ -20,17 +20,20 @@
     <meta property="og:url" content="https://vibhuvioio.com/ldap-manager/">
     <meta property="og:title" content="LDAP Manager - Modern Web Interface for OpenLDAP">
     <meta property="og:description" content="Modern, lightweight web interface for managing OpenLDAP servers with multi-cluster support, server-side pagination, and custom schema detection.">
-    <meta property="og:image" content="https://vibhuvioio.com/ldap-manager/img/ldap-manager.png">
+    <meta property="og:image" content="https://vibhuvioio.com/ldap-manager/img/1ldap-cluster-home.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://vibhuvioio.com/ldap-manager/">
     <meta property="twitter:title" content="LDAP Manager - Modern Web Interface for OpenLDAP">
     <meta property="twitter:description" content="Modern, lightweight web interface for managing OpenLDAP servers with multi-cluster support, server-side pagination, and custom schema detection.">
-    <meta property="twitter:image" content="https://vibhuvioio.com/ldap-manager/img/ldap-manager.png">
+    <meta property="twitter:image" content="https://vibhuvioio.com/ldap-manager/img/1ldap-cluster-home.png">
     
     <link rel="canonical" href="https://vibhuvioio.com/ldap-manager/">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -40,8 +43,8 @@
     <!-- End Google Tag Manager (noscript) -->
     <nav class="navbar">
         <div class="container">
-            <div class="nav-brand">
-                <span class="logo">🗂️</span>
+            <div class="nav-brand" style="display: flex; align-items: center; gap: 12px;">
+                <img src="img/ldap.png" alt="LDAP Manager" style="height: 40px; width: auto;">
                 <span class="brand-name">LDAP Manager</span>
             </div>
             <div class="nav-links">
@@ -154,17 +157,13 @@ services:
                     <h3>✨ Features Guide</h3>
                     <p>Explore all available features</p>
                 </a>
-                <a href="api.html" class="doc-card">
-                    <h3>🔌 API Reference</h3>
-                    <p>Backend API endpoints documentation</p>
-                </a>
-                <a href="security.html" class="doc-card">
-                    <h3>🛡️ Security</h3>
-                    <p>Password caching and security best practices</p>
-                </a>
                 <a href="development.html" class="doc-card">
                     <h3>💻 Development</h3>
                     <p>Contributing and development setup</p>
+                </a>
+                <a href="testing.html" class="doc-card">
+                    <h3>🧪 Testing Guide</h3>
+                    <p>E2E testing with Playwright</p>
                 </a>
             </div>
         </div>
