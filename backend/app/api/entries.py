@@ -277,17 +277,17 @@ async def delete_entry(
         cluster_config = next((c for c in clusters if c.name == cluster_name), None)
         if not cluster_config:
             raise HTTPException(status_code=404, detail="Cluster not found")
-        
+
         if cluster_config.readonly:
             raise HTTPException(status_code=403, detail="Cluster is read-only")
-        
+
         password = get_password(cluster_name, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
+
         host = cluster_config.host or cluster_config.nodes[0]['host']
         port = cluster_config.port or cluster_config.nodes[0]['port']
-        
+
         config = LDAPConfig(
             host=host,
             port=port,
@@ -295,11 +295,147 @@ async def delete_entry(
             bind_password=password,
             base_dn=cluster_config.base_dn or ''
         )
-        
+
         client = LDAPClient(config)
         client.connect()
         client.delete(dn)
         client.disconnect()
         return {"status": "success", "dn": dn}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Group membership management models and endpoints
+
+class GroupMembershipRequest(BaseModel):
+    cluster_name: str
+    user_dn: str
+    groups_to_add: List[str]
+    groups_to_remove: List[str]
+
+
+@router.get("/groups/all")
+async def get_all_groups(cluster: str = Query(...)):
+    """Get all available groups in the cluster"""
+    try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == cluster), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        password = get_password(cluster, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+
+        host = cluster_config.host or cluster_config.nodes[0]['host']
+        port = cluster_config.port or cluster_config.nodes[0]['port']
+
+        config = LDAPConfig(
+            host=host,
+            port=port,
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
+        )
+
+        client = LDAPClient(config)
+        client.connect()
+        groups = client.get_all_groups(config.base_dn)
+        client.disconnect()
+
+        return {"groups": groups}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/user/groups")
+async def get_user_groups(
+    cluster: str = Query(...),
+    user_dn: str = Query(...)
+):
+    """Get all groups that a user belongs to"""
+    try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == cluster), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        password = get_password(cluster, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+
+        host = cluster_config.host or cluster_config.nodes[0]['host']
+        port = cluster_config.port or cluster_config.nodes[0]['port']
+
+        config = LDAPConfig(
+            host=host,
+            port=port,
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
+        )
+
+        client = LDAPClient(config)
+        client.connect()
+        groups = client.get_user_groups(user_dn, config.base_dn)
+        client.disconnect()
+
+        return {"user_dn": user_dn, "groups": groups}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/user/groups")
+async def update_user_groups(req: GroupMembershipRequest):
+    """Add or remove user from groups"""
+    try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == req.cluster_name), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        if cluster_config.readonly:
+            raise HTTPException(status_code=403, detail="Cluster is read-only")
+
+        password = get_password(req.cluster_name, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+
+        host = cluster_config.host or cluster_config.nodes[0]['host']
+        port = cluster_config.port or cluster_config.nodes[0]['port']
+
+        config = LDAPConfig(
+            host=host,
+            port=port,
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
+        )
+
+        client = LDAPClient(config)
+        client.connect()
+
+        errors = []
+
+        # Add user to new groups
+        for group_dn in req.groups_to_add:
+            try:
+                client.add_member_to_group(group_dn, req.user_dn)
+            except Exception as e:
+                errors.append(f"Failed to add to {group_dn}: {str(e)}")
+
+        # Remove user from groups
+        for group_dn in req.groups_to_remove:
+            try:
+                client.remove_member_from_group(group_dn, req.user_dn)
+            except Exception as e:
+                errors.append(f"Failed to remove from {group_dn}: {str(e)}")
+
+        client.disconnect()
+
+        if errors:
+            return {"status": "partial", "user_dn": req.user_dn, "errors": errors}
+
+        return {"status": "success", "user_dn": req.user_dn}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -1,5 +1,5 @@
 import { IHttpClient } from '../interfaces/IHttpClient'
-import { SearchParams, SearchResult, LDAPEntry } from '../models'
+import { SearchParams, SearchResult, LDAPEntry, GroupInfo, UpdateGroupMembershipResponse } from '../models'
 
 interface CreateEntryRequest {
   cluster_name: string
@@ -45,6 +45,36 @@ export class EntryService {
     await this.httpClient.delete('/api/entries/delete', {
       cluster_name: clusterName,
       dn
+    })
+  }
+
+  async getAllGroups(clusterName: string): Promise<GroupInfo[]> {
+    const response = await this.httpClient.get<{ groups: GroupInfo[] }>(
+      '/api/entries/groups/all',
+      { cluster: clusterName }
+    )
+    return response.groups
+  }
+
+  async getUserGroups(clusterName: string, userDn: string): Promise<GroupInfo[]> {
+    const response = await this.httpClient.get<{ user_dn: string; groups: GroupInfo[] }>(
+      '/api/entries/user/groups',
+      { cluster: clusterName, user_dn: userDn }
+    )
+    return response.groups
+  }
+
+  async updateUserGroups(
+    clusterName: string,
+    userDn: string,
+    groupsToAdd: string[],
+    groupsToRemove: string[]
+  ): Promise<UpdateGroupMembershipResponse> {
+    return this.httpClient.put<UpdateGroupMembershipResponse>('/api/entries/user/groups', {
+      cluster_name: clusterName,
+      user_dn: userDn,
+      groups_to_add: groupsToAdd,
+      groups_to_remove: groupsToRemove
     })
   }
 }

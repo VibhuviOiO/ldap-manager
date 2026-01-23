@@ -8,6 +8,7 @@ import DirectoryTable from './DirectoryTable'
 import CreateUserDialog from './CreateUserDialog'
 import EditUserDialog from './EditUserDialog'
 import ChangePasswordDialog from './ChangePasswordDialog'
+import ManageGroupsDialog from './ManageGroupsDialog'
 import ColumnSettings from './ColumnSettings'
 import { clusterService, entryService } from '@/services'
 import { DialogProvider, useDialogs } from '@/contexts/DialogContext'
@@ -36,7 +37,7 @@ function ClusterDetailsInner() {
   const [tableColumns, setTableColumns] = useState<TableColumns>({})
   const [visibleColumns, setVisibleColumns] = useState<Record<string, string[]>>({})
 
-  const { openCreateDialog, openEditDialog, openPasswordDialog, showCreateDialog, showEditDialog, showPasswordDialog, editingEntry, passwordEntry, closeCreateDialog, closeEditDialog, closePasswordDialog } = useDialogs()
+  const { openCreateDialog, openEditDialog, openPasswordDialog, openGroupsDialog, showCreateDialog, showEditDialog, showPasswordDialog, showGroupsDialog, editingEntry, passwordEntry, groupsEntry, closeCreateDialog, closeEditDialog, closePasswordDialog, closeGroupsDialog } = useDialogs()
 
   const handleViewChange = (view: 'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity') => {
     setSearchParams({ view })
@@ -300,6 +301,7 @@ function ClusterDetailsInner() {
             onDelete={handleDelete}
             onEdit={openEditDialog}
             onChangePassword={openPasswordDialog}
+            onManageGroups={openGroupsDialog}
             readonly={clusterConfig?.readonly}
           />
         </div>
@@ -339,6 +341,16 @@ function ClusterDetailsInner() {
           onClose={closePasswordDialog}
           clusterName={clusterName || ''}
           entry={passwordEntry}
+          onSuccess={() => loadClusterData()}
+        />
+      )}
+
+      {showGroupsDialog && groupsEntry && (
+        <ManageGroupsDialog
+          open={showGroupsDialog}
+          onClose={closeGroupsDialog}
+          clusterName={clusterName || ''}
+          entry={groupsEntry}
           onSuccess={() => loadClusterData()}
         />
       )}
