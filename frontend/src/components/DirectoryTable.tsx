@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Pencil, Trash2, Key, Users } from 'lucide-react'
+import { useState, Fragment } from 'react'
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Pencil, Trash2, Key, Users } from 'lucide-react'
 import { Button } from './ui/button'
 
 interface Column {
@@ -29,6 +30,31 @@ interface DirectoryTableProps {
 export default function DirectoryTable({
   entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, onPageSizeChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, onManageGroups, readonly
 }: DirectoryTableProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+
+  const toggleGroupExpand = (groupDn: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(groupDn)) {
+        next.delete(groupDn)
+      } else {
+        next.add(groupDn)
+      }
+      return next
+    })
+  }
+
+  const getMembers = (entry: any): string[] => {
+    const members = entry.member || entry.uniqueMember || entry.memberUid || []
+    return Array.isArray(members) ? members : (members ? [members] : [])
+  }
+
+  const extractUsername = (memberDn: string): string => {
+    // Extract uid or cn from DN like "uid=john,ou=People,dc=example,dc=com"
+    const match = memberDn.match(/^(uid|cn)=([^,]+)/i)
+    return match ? match[2] : memberDn
+  }
+
   if (loading) {
     return (
       <div className="overflow-x-auto">
@@ -124,9 +150,9 @@ export default function DirectoryTable({
     return Array.isArray(value) ? value.join(', ') : (value || '-')
   }
 
-  const renderGroupCell = (entry: any, colName: string) => {
+  const renderGroupCell = (entry: any, colName: string, isClickable: boolean = false) => {
     const value = entry[colName]
-    
+
     // Special rendering for LDAP timestamps
     if ((colName === 'createTimestamp' || colName === 'modifyTimestamp') && value) {
       const year = value.substring(0, 4)
@@ -137,19 +163,40 @@ export default function DirectoryTable({
       const date = new Date(`${year}-${month}-${day}T${hour}:${min}:00Z`)
       return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     }
-    
+
     // Special rendering for members count
     if (colName === 'members') {
-      const members = entry.member || entry.uniqueMember || []
-      const count = Array.isArray(members) ? members.length : (members ? 1 : 0)
+      const members = getMembers(entry)
+      const count = members.length
+      const isExpanded = expandedGroups.has(entry.dn)
+
+      if (isClickable && count > 0) {
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleGroupExpand(entry.dn)
+            }}
+            className="inline-flex items-center space-x-1 text-primary hover:underline focus:outline-none"
+            title={isExpanded ? 'Click to collapse' : 'Click to view members'}
+          >
+            <span>{count} member{count !== 1 ? 's' : ''}</span>
+            {isExpanded ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
+            )}
+          </button>
+        )
+      }
       return `${count} member${count !== 1 ? 's' : ''}`
     }
-    
+
     // Special rendering for DN
     if (colName === 'dn') {
       return <span className="font-mono text-xs">{value}</span>
     }
-    
+
     // Default: render value as-is
     return Array.isArray(value) ? value.join(', ') : (value || '-')
   }
@@ -219,8 +266,16 @@ export default function DirectoryTable({
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry, idx) => (
-              <tr key={idx} className="border-b hover:bg-accent">
+            {entries.map((entry, idx) => {
+              const isGroupExpanded = directoryView === 'groups' && expandedGroups.has(entry.dn)
+              const members = directoryView === 'groups' ? getMembers(entry) : []
+              const colCount = directoryView === 'groups'
+                ? (columns ? columns.filter(c => isColumnVisible(c.name)).length : 3)
+                : 1
+
+              return (
+              <Fragment key={idx}>
+              <tr className="border-b hover:bg-accent">
                 {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
                   <td key={col.name} className="p-2 text-sm">{renderUserCell(entry, col.name)}</td>
                 ))}
@@ -301,13 +356,15 @@ export default function DirectoryTable({
                   </>
                 )}
                 {directoryView === 'groups' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
-                  <td key={col.name} className="p-2 text-sm">{renderGroupCell(entry, col.name)}</td>
+                  <td key={col.name} className="p-2 text-sm">
+                    {col.name === 'members' ? renderGroupCell(entry, col.name, true) : renderGroupCell(entry, col.name)}
+                  </td>
                 ))}
                 {directoryView === 'groups' && !columns && (
                   <>
                     <td className="p-2 text-sm font-medium">{entry.cn || '-'}</td>
                     <td className="p-2 text-sm">{entry.description || '-'}</td>
-                    <td className="p-2 text-sm text-muted-foreground">{renderGroupCell(entry, 'members')}</td>
+                    <td className="p-2 text-sm text-muted-foreground">{renderGroupCell(entry, 'members', true)}</td>
                   </>
                 )}
                 {directoryView === 'ous' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
@@ -338,7 +395,32 @@ export default function DirectoryTable({
                   </>
                 )}
               </tr>
-            ))}
+              {isGroupExpanded && members.length > 0 && (
+                <tr key={`${idx}-expanded`} className="bg-muted/30">
+                  <td colSpan={colCount} className="p-0">
+                    <div className="p-3 pl-6 border-l-4 border-primary/30">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        Members ({members.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {members.map((member, mIdx) => (
+                          <span
+                            key={mIdx}
+                            className="inline-flex items-center px-2.5 py-1 bg-background border rounded-md text-xs"
+                            title={member}
+                          >
+                            <Users className="h-3 w-3 mr-1.5 text-muted-foreground" />
+                            {extractUsername(member)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
+            )})}
+
           </tbody>
         </table>
         </div>
