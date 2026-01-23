@@ -1,1 +1,1 @@
-export type { Cluster, ClusterNode, LDAPEntry, SearchParams, SearchResult, UserCreationForm, PasswordPolicy, TableColumns } from '../../types'
+export type { Cluster, ClusterNode, LDAPEntry, SearchParams, SearchResult, UserCreationForm, PasswordPolicy, TableColumns, GroupInfo, UpdateGroupMembershipResponse } from '../../types'

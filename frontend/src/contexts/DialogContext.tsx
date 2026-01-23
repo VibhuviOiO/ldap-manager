@@ -5,8 +5,10 @@ interface DialogState {
   showCreateDialog: boolean
   showEditDialog: boolean
   showPasswordDialog: boolean
+  showGroupsDialog: boolean
   editingEntry: LDAPEntry | null
   passwordEntry: LDAPEntry | null
+  groupsEntry: LDAPEntry | null
 }
 
 interface DialogContextValue extends DialogState {
@@ -16,6 +18,8 @@ interface DialogContextValue extends DialogState {
   closeEditDialog: () => void
   openPasswordDialog: (entry: LDAPEntry) => void
   closePasswordDialog: () => void
+  openGroupsDialog: (entry: LDAPEntry) => void
+  closeGroupsDialog: () => void
 }
 
 const DialogContext = createContext<DialogContextValue | undefined>(undefined)
@@ -25,8 +29,10 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     showCreateDialog: false,
     showEditDialog: false,
     showPasswordDialog: false,
+    showGroupsDialog: false,
     editingEntry: null,
     passwordEntry: null,
+    groupsEntry: null,
   })
 
   const openCreateDialog = useCallback(() => {
@@ -53,8 +59,16 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, showPasswordDialog: false, passwordEntry: null }))
   }, [])
 
+  const openGroupsDialog = useCallback((entry: LDAPEntry) => {
+    setState(s => ({ ...s, showGroupsDialog: true, groupsEntry: entry }))
+  }, [])
+
+  const closeGroupsDialog = useCallback(() => {
+    setState(s => ({ ...s, showGroupsDialog: false, groupsEntry: null }))
+  }, [])
+
   return (
-    <DialogContext.Provider value={{ ...state, openCreateDialog, closeCreateDialog, openEditDialog, closeEditDialog, openPasswordDialog, closePasswordDialog }}>
+    <DialogContext.Provider value={{ ...state, openCreateDialog, closeCreateDialog, openEditDialog, closeEditDialog, openPasswordDialog, closePasswordDialog, openGroupsDialog, closeGroupsDialog }}>
       {children}
     </DialogContext.Provider>
   )

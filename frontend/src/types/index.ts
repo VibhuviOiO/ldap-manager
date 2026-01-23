@@ -96,3 +96,21 @@ export interface MonitoringData {
   message?: string
   [key: string]: unknown
 }
+
+export interface GroupInfo {
+  dn: string
+  cn: string | string[]
+  description?: string | string[]
+  objectClass?: string[]
+}
+
+export interface UserGroupsResponse {
+  user_dn: string
+  groups: GroupInfo[]
+}
+
+export interface UpdateGroupMembershipResponse {
+  status: 'success' | 'partial'
+  user_dn: string
+  errors?: string[]
+}

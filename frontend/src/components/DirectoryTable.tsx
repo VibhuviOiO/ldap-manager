@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Pencil, Trash2, Key } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil, Trash2, Key, Users } from 'lucide-react'
 import { Button } from './ui/button'
 
 interface Column {
@@ -22,11 +22,12 @@ interface DirectoryTableProps {
   onDelete?: (dn: string) => void
   onEdit?: (entry: any) => void
   onChangePassword?: (entry: any) => void
+  onManageGroups?: (entry: any) => void
   readonly?: boolean
 }
 
 export default function DirectoryTable({
-  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, onPageSizeChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, readonly
+  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, onPageSizeChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, onManageGroups, readonly
 }: DirectoryTableProps) {
   if (loading) {
     return (
@@ -227,6 +228,13 @@ export default function DirectoryTable({
                   <td className="p-2 text-sm text-right">
                     <div className="flex items-center justify-end space-x-2">
                       <button
+                        onClick={() => onManageGroups?.(entry)}
+                        className="p-1.5 hover:bg-accent rounded transition-colors"
+                        title="Manage groups"
+                      >
+                        <Users className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                      <button
                         onClick={() => onChangePassword?.(entry)}
                         className="p-1.5 hover:bg-accent rounded transition-colors"
                         title="Change password"
@@ -259,6 +267,13 @@ export default function DirectoryTable({
                     {!readonly && (
                       <td className="p-2 text-sm text-right">
                         <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => onManageGroups?.(entry)}
+                            className="p-1.5 hover:bg-accent rounded transition-colors"
+                            title="Manage groups"
+                          >
+                            <Users className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                          </button>
                           <button
                             onClick={() => onChangePassword?.(entry)}
                             className="p-1.5 hover:bg-accent rounded transition-colors"
