@@ -61,9 +61,15 @@ async def check_cluster_health(cluster_name: str):
                 "status": "warning",
                 "message": "Password not configured. Please enter password to connect."
             }
-        
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+
+        # For multi-node clusters, always use first node's explicit host and port
+        # For single-node clusters, use cluster host and port
+        if cluster_config.nodes:
+            host = cluster_config.nodes[0]['host']
+            port = cluster_config.nodes[0]['port']
+        else:
+            host = cluster_config.host
+            port = cluster_config.port or 389
         
         config = LDAPConfig(
             host=host,

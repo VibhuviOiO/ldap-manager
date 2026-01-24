@@ -29,10 +29,15 @@ async def connect(req: ConnectionRequest):
         
         if not password:
             raise HTTPException(status_code=400, detail="Password required")
-        
-        # Connect to first node or single host
-        host = cluster.host or cluster.nodes[0]['host']
-        port = cluster.port or cluster.nodes[0]['port']
+
+        # For multi-node clusters, always use first node's explicit host and port
+        # For single-node clusters, use cluster host and port
+        if cluster.nodes:
+            host = cluster.nodes[0]['host']
+            port = cluster.nodes[0]['port']
+        else:
+            host = cluster.host
+            port = cluster.port or 389
         
         config = LDAPConfig(
             host=host,
