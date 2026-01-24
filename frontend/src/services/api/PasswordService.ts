@@ -7,6 +7,10 @@ export class PasswordService {
     return this.httpClient.get(`/api/password/check/${clusterName}`)
   }
 
+  async clearPasswordCache(clusterName: string): Promise<{ status: string; message: string }> {
+    return this.httpClient.delete(`/api/password/cache/${clusterName}`)
+  }
+
   async changePassword(clusterName: string, dn: string, newPassword: string): Promise<void> {
     await this.httpClient.post('/api/password/change', {
       cluster_name: clusterName,

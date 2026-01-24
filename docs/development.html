@@ -66,7 +66,8 @@
                 <li><strong>TypeScript</strong> - Type-safe JavaScript</li>
                 <li><strong>Vite</strong> - Fast build tool and dev server</li>
                 <li><strong>shadcn/ui</strong> - Beautiful UI components built on Radix UI + Tailwind CSS</li>
-                <li><strong>Axios</strong> - HTTP client for API calls</li>
+                <li><strong>SOLID Services Architecture</strong> - Abstraction-based HTTP client with dependency injection for reusability</li>
+                <li><strong>Axios</strong> - HTTP client library (via IHttpClient abstraction)</li>
                 <li><strong>React Router</strong> - Client-side routing</li>
                 <li><strong>Tailwind CSS</strong> - Utility-first CSS framework</li>
             </ul>
@@ -181,7 +182,11 @@ npm run dev</code></pre>
    ↓
 React App (Port 5173)
    ↓
-Axios HTTP Client
+Services Layer (ClusterService, EntryService, etc.)
+   ↓
+IHttpClient Interface (SOLID: Dependency Inversion)
+   ↓
+AxiosHttpClient Implementation
    ↓
 Backend API (Port 8000)
    ↓

@@ -6,7 +6,9 @@ class LDAPClusterConfig:
     def __init__(self, data: Dict[str, Any]):
         self.name = data.get("name")
         self.host = data.get("host")
-        self.port = data.get("port", 389)
+        # Only set default port for single-node clusters
+        # For multi-node clusters, port should be None so connection logic uses node ports
+        self.port = data.get("port") if data.get("nodes") else data.get("port", 389)
         self.nodes = data.get("nodes", [])
         self.base_dn = data.get("base_dn")
         self.bind_dn = data.get("bind_dn")

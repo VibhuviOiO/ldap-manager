@@ -121,6 +121,16 @@ function Dashboard() {
     }
   }
 
+  const handleClearPassword = async (clusterName: string) => {
+    try {
+      await passwordService.clearPasswordCache(clusterName)
+      setPasswordCache(prev => ({ ...prev, [clusterName]: false }))
+      toast.success(`Password cleared for ${clusterName}`)
+    } catch (err: any) {
+      toast.error(`Failed to clear password: ${getErrorMessage(err)}`)
+    }
+  }
+
   return (
     <main className="container mx-auto px-6 py-8 space-y-8">
       <div className="space-y-2">
@@ -182,7 +192,21 @@ function Dashboard() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button 
+                    {passwordCache[cluster.name] && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleClearPassword(cluster.name)
+                        }}
+                        aria-label={`Clear password for ${cluster.name}`}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" aria-hidden="true" />
+                        Clear Password
+                      </Button>
+                    )}
+                    <Button
                       onClick={() => handleConnect(cluster.name)}
                       className="shadow-sm"
                       aria-label={`View ${cluster.name} cluster`}
