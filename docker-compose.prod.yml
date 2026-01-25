@@ -1,11 +1,60 @@
+version: '3.8'
+
 services:
   ldap-manager:
     image: ghcr.io/vibhuvioio/ldap-manager:latest
     container_name: ldap-manager
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
+
     environment:
-      - PYTHONUNBUFFERED=1
+      - CONTEXT_PATH=${CONTEXT_PATH:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - JSON_LOGS=${JSON_LOGS:-true}
+
     volumes:
       - ./config.yml:/app/config.yml:ro
-    restart: unless-stopped
+      - ldap-cache:/app/.cache
+      - ldap-secrets:/app/.secrets
+
+    ports:
+      - "${PORT:-8000}:8000"
+
+    # Health check (matches Dockerfile HEALTHCHECK)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    # Structured logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service,environment"
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Need write access for cache/secrets
+    tmpfs:
+      - /tmp
+
+volumes:
+  ldap-cache:
+    driver: local
+  ldap-secrets:
+    driver: local

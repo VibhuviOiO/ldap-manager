@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.password_cache import save_password, get_password
 from app.core.config import load_config
+from app.core.node_selector import NodeSelector, OperationType
 
 router = APIRouter()
 
@@ -30,14 +31,8 @@ async def connect(req: ConnectionRequest):
         if not password:
             raise HTTPException(status_code=400, detail="Password required")
 
-        # For multi-node clusters, always use first node's explicit host and port
-        # For single-node clusters, use cluster host and port
-        if cluster.nodes:
-            host = cluster.nodes[0]['host']
-            port = cluster.nodes[0]['port']
-        else:
-            host = cluster.host
-            port = cluster.port or 389
+        # Select node for HEALTH check (connection test)
+        host, port = NodeSelector.select_node(cluster, OperationType.HEALTH)
         
         config = LDAPConfig(
             host=host,

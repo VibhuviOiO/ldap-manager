@@ -1,34 +1,77 @@
+# Multi-stage production build with security hardening
+
+# Stage 1: Build frontend
 FROM node:20-slim AS frontend-builder
 
 WORKDIR /frontend
 
-COPY frontend/package.json ./
-RUN npm install
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --only=production
 
 COPY frontend/ ./
 ARG CONTEXT_PATH=""
 ENV CONTEXT_PATH=${CONTEXT_PATH}
 RUN npm run build
 
-FROM python:3.11-slim
+# Stage 2: Build Python dependencies
+FROM python:3.11-slim AS python-builder
 
-WORKDIR /app
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libldap2-dev \
     libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /build
+COPY backend/requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
-COPY backend/app/ ./app/
-COPY --from=frontend-builder /frontend/dist ./app/static
+# Stage 3: Production image
+FROM python:3.11-slim
 
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libldap-2.5-0 \
+    libsasl2-2 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 -s /bin/bash ldapmanager && \
+    mkdir -p /app/.cache /app/.secrets && \
+    chown -R ldapmanager:ldapmanager /app
+
+WORKDIR /app
+
+# Install Python packages from wheels
+COPY --from=python-builder /wheels /wheels
+RUN pip install --no-cache /wheels/* && rm -rf /wheels
+
+# Copy application code
+COPY --chown=ldapmanager:ldapmanager backend/app ./app
+
+# Copy frontend static files
+COPY --from=frontend-builder --chown=ldapmanager:ldapmanager /frontend/dist ./app/static
+
+# Switch to non-root user
+USER ldapmanager
+
+# Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV WEB_CONCURRENCY=2
+ENV WEB_CONCURRENCY=4
+ENV LOG_LEVEL=INFO
+ENV JSON_LOGS=true
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--timeout-keep-alive", "30", \
+     "--log-level", "info"]

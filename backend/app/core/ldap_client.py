@@ -21,6 +21,11 @@ class LDAPClient:
         try:
             ldap_url = f"ldap://{self.config.host}:{self.config.port}"
             self.conn = ldap.initialize(ldap_url)
+
+            # Set network and operation timeouts (30 seconds)
+            self.conn.set_option(ldap.OPT_NETWORK_TIMEOUT, 30)
+            self.conn.set_option(ldap.OPT_TIMEOUT, 30)
+
             self.conn.simple_bind_s(self.config.bind_dn, self.config.bind_password)
             
             # Auto-discover base_dn if empty

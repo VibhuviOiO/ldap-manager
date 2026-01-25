@@ -4,9 +4,13 @@ from typing import List, Dict, Optional
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.config import load_config
 from app.core.password_cache import get_password
+from app.core.node_selector import NodeSelector, OperationType
 import ldap
+import ldap.filter
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class SearchRequest(BaseModel):
     host: str
@@ -38,6 +42,61 @@ class EntryUpdateRequest(BaseModel):
     dn: str
     modifications: Dict
 
+@router.get("/stats")
+async def get_entry_stats(cluster: str = Query(...)):
+    """Get entry counts by object class without fetching full entries"""
+    try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == cluster), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        password = get_password(cluster, cluster_config.bind_dn)
+        if not password:
+            raise HTTPException(status_code=401, detail="Password not configured")
+
+        # Select node for READ operation (uses last node with failover)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
+
+        config = LDAPConfig(
+            host=host,
+            port=port,
+            bind_dn=cluster_config.bind_dn,
+            bind_password=password,
+            base_dn=cluster_config.base_dn or ''
+        )
+
+        client = LDAPClient(config)
+        client.connect()
+
+        # Perform lightweight count queries
+        total = client.get_entry_count(client.config.base_dn)
+        users = client.get_entry_count(
+            client.config.base_dn,
+            "(|(objectClass=inetOrgPerson)(objectClass=posixAccount)(objectClass=account))"
+        )
+        groups = client.get_entry_count(
+            client.config.base_dn,
+            "(|(objectClass=groupOfNames)(objectClass=groupOfUniqueNames)(objectClass=posixGroup))"
+        )
+        ous = client.get_entry_count(
+            client.config.base_dn,
+            "(objectClass=organizationalUnit)"
+        )
+
+        client.disconnect()
+
+        return {
+            "total": total,
+            "users": users,
+            "groups": groups,
+            "ous": ous,
+            "other": total - users - groups - ous
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/search")
 async def search_by_cluster(
     cluster: str = Query(...),
@@ -56,8 +115,8 @@ async def search_by_cluster(
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
         
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+        # Select node for READ operation (uses last node with failover)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
         
         config = LDAPConfig(
             host=host,
@@ -78,7 +137,9 @@ async def search_by_cluster(
         
         # Add search filter
         if search:
-            search_filter = f"(|(uid=*{search}*)(cn=*{search}*)(mail=*{search}*)(sn=*{search}*))"
+            # Escape user input to prevent LDAP injection
+            escaped_search = ldap.filter.escape_filter_chars(search)
+            search_filter = f"(|(uid=*{escaped_search}*)(cn=*{escaped_search}*)(mail=*{escaped_search}*)(sn=*{escaped_search}*))"
             if ldap_filter != "(objectClass=*)":
                 ldap_filter = f"(&{ldap_filter}{search_filter})"
             else:
@@ -90,28 +151,34 @@ async def search_by_cluster(
         # Request operational attributes (+) along with regular attributes (*)
         attrs = ['*', '+']  # * = all user attributes, + = all operational attributes
         
-        # Calculate pagination
+        # Server-side pagination using LDAP cookies
+        # LDAP pagination doesn't support random access, so we iterate through pages
         cookie = b''
-        skip = (page - 1) * page_size
-        
-        # For first page, get paginated results
-        if page == 1:
-            entries, next_cookie, total = client.search(
+        current_page = 1
+        entries = []
+        total = 0
+
+        # Iterate through pages until we reach the desired page
+        while current_page <= page:
+            batch_entries, cookie, total = client.search(
                 client.config.base_dn, ldap_filter, attrs=attrs,
                 page_size=page_size, cookie=cookie
             )
-        else:
-            # For subsequent pages, need to iterate through pages
-            # This is a limitation - LDAP pagination doesn't support random access
-            entries, next_cookie, total = client.search(
-                client.config.base_dn, ldap_filter, attrs=attrs,
-                page_size=0, cookie=b''
-            )
-            # Client-side pagination for pages > 1
-            start = skip
-            end = skip + page_size
-            entries = entries[start:end]
-            next_cookie = b'' if end >= total else b'more'
+
+            if current_page == page:
+                # This is our target page
+                entries = batch_entries
+                break
+
+            # Not our target page yet, continue to next page
+            if not cookie:
+                # No more pages available
+                entries = []
+                break
+
+            current_page += 1
+
+        next_cookie = cookie  # Preserve cookie for "has_more" check
         
         client.disconnect()
         
@@ -162,10 +229,10 @@ async def create_entry(req: EntryCreateRequest):
         password = get_password(req.cluster_name, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
-        
+
+        # Select node for WRITE operation (uses first node for consistency)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
+
         config = LDAPConfig(
             host=host,
             port=port,
@@ -173,7 +240,7 @@ async def create_entry(req: EntryCreateRequest):
             bind_password=password,
             base_dn=cluster_config.base_dn or ''
         )
-        
+
         # Process auto-generated fields from form config
         form_config = cluster_config.user_creation_form
         if form_config:
@@ -209,6 +276,18 @@ async def create_entry(req: EntryCreateRequest):
         client.connect()
         client.add(req.dn, req.attributes)
         client.disconnect()
+
+        # Audit log
+        logger.info(
+            "LDAP entry created",
+            extra={
+                "cluster": req.cluster_name,
+                "dn": req.dn,
+                "operation": "CREATE",
+                "object_classes": req.attributes.get("objectClass", [])
+            }
+        )
+
         return {"status": "success", "dn": req.dn}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -227,10 +306,10 @@ async def update_entry(req: EntryUpdateRequest):
         password = get_password(req.cluster_name, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
-        
+
+        # Select node for WRITE operation (uses first node for consistency)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
+
         config = LDAPConfig(
             host=host,
             port=port,
@@ -238,7 +317,7 @@ async def update_entry(req: EntryUpdateRequest):
             bind_password=password,
             base_dn=cluster_config.base_dn or ''
         )
-        
+
         # If password is being changed, update shadowLastChange (only if user has shadowAccount objectClass)
         if 'userPassword' in req.modifications:
             # Check if user has shadowAccount objectClass
@@ -263,6 +342,18 @@ async def update_entry(req: EntryUpdateRequest):
         client.connect()
         client.modify(req.dn, req.modifications)
         client.disconnect()
+
+        # Audit log
+        logger.info(
+            "LDAP entry updated",
+            extra={
+                "cluster": req.cluster_name,
+                "dn": req.dn,
+                "operation": "UPDATE",
+                "modified_attributes": list(req.modifications.keys())
+            }
+        )
+
         return {"status": "success", "dn": req.dn}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -285,8 +376,8 @@ async def delete_entry(
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+        # Select node for WRITE operation (uses first node for consistency)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
 
         config = LDAPConfig(
             host=host,
@@ -300,6 +391,17 @@ async def delete_entry(
         client.connect()
         client.delete(dn)
         client.disconnect()
+
+        # Audit log
+        logger.warning(
+            "LDAP entry deleted",
+            extra={
+                "cluster": cluster_name,
+                "dn": dn,
+                "operation": "DELETE"
+            }
+        )
+
         return {"status": "success", "dn": dn}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -327,8 +429,8 @@ async def get_all_groups(cluster: str = Query(...)):
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+        # Select node for READ operation (uses last node with failover)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
 
         config = LDAPConfig(
             host=host,
@@ -364,8 +466,8 @@ async def get_user_groups(
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+        # Select node for READ operation (uses last node with failover)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
 
         config = LDAPConfig(
             host=host,
@@ -401,8 +503,8 @@ async def update_user_groups(req: GroupMembershipRequest):
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+        # Select node for WRITE operation (uses first node for consistency)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
 
         config = LDAPConfig(
             host=host,

@@ -18,27 +18,16 @@ export default function DirectoryStats({ clusterName }: DirectoryStatsProps) {
   const loadStats = async () => {
     setLoading(true)
     try {
-      const res = await axios.get(`/api/entries/search`, {
+      const res = await axios.get(`/api/entries/stats`, {
         params: {
-          cluster: clusterName,
-          page: 1,
-          page_size: 1000
+          cluster: clusterName
         }
       })
-      const allEntries = res.data.entries || []
-      const users = allEntries.filter((e: any) => 
-        e.objectClass?.includes('inetOrgPerson') || 
-        e.objectClass?.includes('person') ||
-        e.objectClass?.includes('posixAccount') ||
-        e.objectClass?.includes('account') ||
-        e.objectClass?.includes('MahabharataUser')
-      ).length
-      const groups = allEntries.filter((e: any) => 
-        e.objectClass?.includes('groupOfNames') || 
-        e.objectClass?.includes('groupOfUniqueNames') ||
-        e.objectClass?.includes('posixGroup')
-      ).length
-      setStats({ total: allEntries.length, users, groups })
+      setStats({
+        total: res.data.total,
+        users: res.data.users,
+        groups: res.data.groups
+      })
     } catch (err) {
       console.error('Failed to load stats', err)
     }
