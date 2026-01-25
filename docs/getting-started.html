@@ -51,11 +51,14 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
+                    <a href="security.html">Security</a>
+                </div>
+                <div class="nav-section">
+                    <h3>Deployment</h3>
+                    <a href="production.html">Production Guide</a>
                 </div>
                 <div class="nav-section">
                     <h3>Contributing</h3>
-                    
-                    
                     <a href="development.html">Development</a>
                     <a href="testing.html">Testing Guide</a>
                 </div>
@@ -116,11 +119,12 @@
             <h3>Option A: Docker Run (Fastest)</h3>
             <pre><code>docker run -d \
   --name ldap-manager \
+  -p 5173:5173 \
   -p 8000:8000 \
   -v $(pwd)/config.yml:/app/config.yml:ro \
   ghcr.io/vibhuvioio/ldap-manager:latest</code></pre>
 
-            <p>Access the UI at <code>http://localhost:8000</code></p>
+            <p>Access the UI at <code>http://localhost:5173</code> (Frontend) or <code>http://localhost:8000</code> (API)</p>
 
             <h3>Option B: Docker Compose (Recommended)</h3>
             
@@ -130,18 +134,19 @@
             <p>Start the application:</p>
             <pre><code>docker-compose -f docker-compose.prod.yml up -d</code></pre>
 
-            <p>Access the UI at <code>http://localhost:8000</code></p>
+            <p>Access the UI at <code>http://localhost:5173</code> (or <code>http://localhost:8000</code> for API)</p>
 
             <h2>Step 3: First Time Setup</h2>
             <ol>
-                <li>Open <code>http://localhost:8000</code> in your browser</li>
+                <li>Open <code>http://localhost:5173</code> in your browser</li>
                 <li>Click on your cluster name</li>
-                <li>Enter the admin password when prompted</li>
-                <li>Password is cached (SHA256 hashed) for all users</li>
+                <li>Enter the bind DN password when prompted</li>
+                <li>Password is encrypted and cached securely with Fernet (AES-128-CBC)</li>
+                <li>Cached passwords expire after 1 hour (default)</li>
             </ol>
 
             <div class="note">
-                <strong>Note:</strong> The password is cached securely using SHA256 hashing and stored only in the container's <code>/app/.cache/</code> directory.
+                <strong>Security:</strong> Passwords are encrypted at rest using Fernet symmetric encryption with automatic TTL expiration. Encryption keys are stored in <code>/app/.secrets/</code> with 0600 file permissions. Never stored in plaintext. See <a href="security.html">Security Guide</a> for details.
             </div>
 
             <h2>Local Development</h2>

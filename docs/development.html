@@ -45,6 +45,11 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
+                    <a href="security.html">Security</a>
+                </div>
+                <div class="nav-section">
+                    <h3>Deployment</h3>
+                    <a href="production.html">Production Guide</a>
                 </div>
                 <div class="nav-section">
                     <h3>Contributing</h3>
@@ -78,14 +83,26 @@
                 <li><strong>Python 3.11+</strong> - Latest Python features</li>
                 <li><strong>python-ldap</strong> - LDAP client library</li>
                 <li><strong>PyYAML</strong> - YAML configuration parsing</li>
+                <li><strong>Pydantic</strong> - Data validation and settings management</li>
+                <li><strong>cryptography</strong> - Fernet symmetric encryption for password storage</li>
                 <li><strong>Uvicorn</strong> - ASGI server</li>
             </ul>
 
             <h3>Testing</h3>
             <ul>
-                <li><strong>Playwright</strong> - E2E testing framework</li>
-                <li><strong>95 tests</strong> - Comprehensive test coverage</li>
-                <li><strong>Multi-browser</strong> - Chrome, Firefox, Safari</li>
+                <li><strong>Frontend E2E</strong> - Playwright with 95 tests across Chrome, Firefox, Safari</li>
+                <li><strong>Backend Unit/Integration</strong> - pytest with 104 tests (97% pass rate)</li>
+                <li><strong>Coverage Target</strong> - >80% code coverage for backend</li>
+                <li><strong>Security Testing</strong> - Encryption, injection protection, authentication</li>
+            </ul>
+
+            <h4>Backend Test Suite</h4>
+            <ul>
+                <li>24 tests - Password encryption and cache security</li>
+                <li>19 tests - Load balancing and node selection</li>
+                <li>20 tests - LDAP client operations</li>
+                <li>25 tests - API endpoints and security</li>
+                <li>15 tests - Connection pooling</li>
             </ul>
 
             <h2>Project Structure</h2>
@@ -174,6 +191,40 @@ npm run dev</code></pre>
     port: 389
     bind_dn: "cn=Manager,dc=example,dc=com"
     base_dn: "dc=example,dc=com"</code></pre>
+
+            <h2>Running Tests</h2>
+
+            <h3>Backend Tests</h3>
+            <pre><code># Install test dependencies
+cd backend
+pip install -r requirements-test.txt
+
+# Run all tests with coverage
+pytest --cov=app --cov-report=html --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_password_cache.py -v
+
+# Run tests by category
+pytest -m security  # Security tests only</code></pre>
+
+            <p>View coverage report: <code>open htmlcov/index.html</code></p>
+
+            <h4>Test Categories</h4>
+            <ul>
+                <li><code>tests/test_password_cache.py</code> - Password encryption and TTL</li>
+                <li><code>tests/test_node_selector.py</code> - Load balancing and failover</li>
+                <li><code>tests/test_ldap_client.py</code> - LDAP operations</li>
+                <li><code>tests/test_api_entries.py</code> - API endpoints and security</li>
+                <li><code>tests/test_connection_pool.py</code> - Connection pooling</li>
+                <li><code>tests/test_config_validator.py</code> - Configuration validation</li>
+            </ul>
+
+            <h3>Frontend E2E Tests</h3>
+            <pre><code>cd frontend
+npm run test           # Vitest unit tests
+npx playwright test    # E2E tests (all browsers)
+npx playwright test --headed  # Watch tests run</code></pre>
 
             <h2>Architecture</h2>
 

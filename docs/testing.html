@@ -45,6 +45,11 @@
                 <div class="nav-section">
                     <h3>Features</h3>
                     <a href="features.html">Overview</a>
+                    <a href="security.html">Security</a>
+                </div>
+                <div class="nav-section">
+                    <h3>Deployment</h3>
+                    <a href="production.html">Production Guide</a>
                 </div>
                 <div class="nav-section">
                     <h3>Contributing</h3>
@@ -56,20 +61,125 @@
 
         <main class="docs-content">
             <h1>Testing Guide</h1>
-            <p>Comprehensive guide to testing LDAP Manager with Playwright E2E tests.</p>
+            <p>Comprehensive guide to testing LDAP Manager with backend unit tests and frontend E2E tests.</p>
 
-            <h2>Test Coverage</h2>
-            <p>LDAP Manager has <strong>95 tests</strong> with <strong>100% pass rate</strong> across 3 browsers.</p>
+            <h2>Test Coverage Overview</h2>
+            <p>LDAP Manager has <strong>199 total tests</strong> with comprehensive coverage across backend and frontend.</p>
 
             <h3>Test Statistics</h3>
             <ul>
-                <li><strong>Total Tests:</strong> 95</li>
-                <li><strong>Browsers:</strong> Chrome, Firefox, Safari</li>
-                <li><strong>Pass Rate:</strong> 100%</li>
-                <li><strong>Coverage:</strong> Dashboard, Users, Groups, OUs, Monitoring, User Lifecycle</li>
+                <li><strong>Backend Tests:</strong> 104 tests (97% pass rate, >80% code coverage target)</li>
+                <li><strong>Frontend E2E Tests:</strong> 95 tests (100% pass rate)</li>
+                <li><strong>Total:</strong> 199 tests</li>
+                <li><strong>Browsers:</strong> Chrome, Firefox, Safari (E2E)</li>
+                <li><strong>Coverage:</strong> Security, LDAP operations, API endpoints, UI workflows</li>
             </ul>
 
-            <h2>Test Categories</h2>
+            <h2>Backend Testing</h2>
+
+            <h3>Running Backend Tests</h3>
+            <pre><code>cd backend
+
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all tests with coverage
+pytest --cov=app --cov-report=html --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_password_cache.py -v
+
+# Run with verbose output
+pytest -v
+
+# View HTML coverage report
+open htmlcov/index.html</code></pre>
+
+            <h3>Backend Test Suite (104 tests)</h3>
+
+            <h4>Password Cache Tests (24 tests)</h4>
+            <ul>
+                <li>Fernet encryption key generation and storage</li>
+                <li>Password encryption and decryption</li>
+                <li>TTL expiration and automatic cleanup</li>
+                <li>Cache file permissions (0600)</li>
+                <li>Multi-cluster password isolation</li>
+            </ul>
+
+            <h4>Node Selector Tests (19 tests)</h4>
+            <ul>
+                <li>READ operations use last→second→first node order</li>
+                <li>WRITE operations always use first node</li>
+                <li>Automatic failover on node failure</li>
+                <li>Socket connectivity checks</li>
+                <li>Single-node cluster handling</li>
+            </ul>
+
+            <h4>LDAP Client Tests (20 tests)</h4>
+            <ul>
+                <li>Connection and authentication</li>
+                <li>Search operations with pagination</li>
+                <li>Add, modify, delete operations</li>
+                <li>Group membership management</li>
+                <li>Error handling and timeouts</li>
+            </ul>
+
+            <h4>API Endpoints Tests (25 tests)</h4>
+            <ul>
+                <li>LDAP injection protection</li>
+                <li>Authentication and authorization</li>
+                <li>Entry CRUD operations</li>
+                <li>Group membership endpoints</li>
+                <li>Read-only cluster enforcement</li>
+            </ul>
+
+            <h4>Connection Pool Tests (15 tests)</h4>
+            <ul>
+                <li>Connection reuse and TTL</li>
+                <li>Stale connection cleanup</li>
+                <li>Thread safety</li>
+                <li>Pool statistics</li>
+            </ul>
+
+            <h4>Configuration Validation Tests (25+ tests)</h4>
+            <ul>
+                <li>Pydantic schema validation</li>
+                <li>Port range validation</li>
+                <li>Host/nodes XOR constraint</li>
+                <li>Duplicate cluster name detection</li>
+            </ul>
+
+            <h3>Security Testing</h3>
+            <p>Dedicated tests for security features:</p>
+            <ul>
+                <li>✅ Password never stored in plaintext</li>
+                <li>✅ LDAP injection attempts blocked</li>
+                <li>✅ Invalid credentials handled properly</li>
+                <li>✅ TTL expiration enforced</li>
+                <li>✅ File permissions verified</li>
+            </ul>
+
+            <h2>Frontend E2E Testing</h2>
+
+            <h3>Running E2E Tests</h3>
+            <pre><code>cd frontend
+
+# Install dependencies
+npm install
+
+# Run E2E tests (all browsers)
+npx playwright test
+
+# Run in headed mode (watch tests run)
+npx playwright test --headed
+
+# Run specific test file
+npx playwright test tests/e2e/dashboard.spec.ts
+
+# Run in specific browser
+npx playwright test --project=chromium</code></pre>
+
+            <h3>Frontend Test Categories (95 tests)</h3>
 
             <h3>Dashboard Tests (5 tests)</h3>
             <ul>
