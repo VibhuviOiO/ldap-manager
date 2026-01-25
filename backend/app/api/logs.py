@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from app.core.config import load_config
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.password_cache import get_password
+from app.core.node_selector import NodeSelector, OperationType
 from datetime import datetime
 
 router = APIRouter()
@@ -17,9 +18,9 @@ async def get_activity_logs(cluster: str = Query(...)):
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
-        host = cluster_config.host or cluster_config.nodes[0]['host']
-        port = cluster_config.port or cluster_config.nodes[0]['port']
+
+        # Select node for READ operation (uses last node with failover)
+        host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
         
         config = LDAPConfig(
             host=host,

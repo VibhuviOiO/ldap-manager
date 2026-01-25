@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.core.config import load_config
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.password_cache import get_password
+from app.core.node_selector import NodeSelector, OperationType
 from pathlib import Path
 import ldap
 
@@ -15,7 +16,7 @@ async def list_clusters():
             status_code=404,
             detail="Configuration file not found. Please create /app/config.yml from config.example.yml"
         )
-    
+
     try:
         clusters = load_config()
         if not clusters:
@@ -44,6 +45,30 @@ async def list_clusters():
             detail=f"Failed to load configuration: {str(e)}"
         )
 
+@router.get("/get/{cluster_name}")
+async def get_cluster(cluster_name: str):
+    """Get configuration for a single cluster"""
+    try:
+        clusters = load_config()
+        cluster_config = next((c for c in clusters if c.name == cluster_name), None)
+        if not cluster_config:
+            raise HTTPException(status_code=404, detail=f"Cluster '{cluster_name}' not found")
+
+        return {
+            "name": cluster_config.name,
+            "host": cluster_config.host,
+            "port": cluster_config.port,
+            "nodes": cluster_config.nodes,
+            "base_dn": cluster_config.base_dn,
+            "bind_dn": cluster_config.bind_dn,
+            "readonly": cluster_config.readonly,
+            "description": cluster_config.description
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load cluster config: {str(e)}")
+
 @router.get("/health/{cluster_name}")
 async def check_cluster_health(cluster_name: str):
     try:
@@ -62,14 +87,8 @@ async def check_cluster_health(cluster_name: str):
                 "message": "Password not configured. Please enter password to connect."
             }
 
-        # For multi-node clusters, always use first node's explicit host and port
-        # For single-node clusters, use cluster host and port
-        if cluster_config.nodes:
-            host = cluster_config.nodes[0]['host']
-            port = cluster_config.nodes[0]['port']
-        else:
-            host = cluster_config.host
-            port = cluster_config.port or 389
+        # Select node for HEALTH check
+        host, port = NodeSelector.select_node(cluster_config, OperationType.HEALTH)
         
         config = LDAPConfig(
             host=host,

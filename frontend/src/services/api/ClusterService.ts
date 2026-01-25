@@ -15,6 +15,10 @@ export class ClusterService {
     return response.clusters
   }
 
+  async getCluster(clusterName: string): Promise<Cluster> {
+    return this.httpClient.get<Cluster>(`/api/clusters/get/${clusterName}`)
+  }
+
   async getClusterHealth(clusterName: string): Promise<ClusterHealthResponse> {
     return this.httpClient.get<ClusterHealthResponse>(`/api/clusters/health/${clusterName}`)
   }

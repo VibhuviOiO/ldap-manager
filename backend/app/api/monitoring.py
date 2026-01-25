@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.config import load_config
 from app.core.password_cache import get_password
+from app.core.node_selector import NodeSelector
 import ldap
 import time
 import random
@@ -19,19 +20,16 @@ async def get_node_sync_stats(cluster: str = Query(...)):
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
-        nodes = []
-        if cluster_config.host:
-            nodes = [{"host": cluster_config.host, "port": cluster_config.port}]
-        else:
-            nodes = cluster_config.nodes
-        
+
+        # Get all nodes for health monitoring
+        all_nodes = NodeSelector.get_all_nodes(cluster_config)
+
         results = []
-        for node in nodes:
+        for host, port in all_nodes:
             try:
                 config = LDAPConfig(
-                    host=node['host'],
-                    port=node['port'],
+                    host=host,
+                    port=port,
                     bind_dn=cluster_config.bind_dn,
                     bind_password=password,
                     base_dn=cluster_config.base_dn or ''
@@ -70,12 +68,12 @@ async def get_node_sync_stats(cluster: str = Query(...)):
                                 csn_time = datetime.strptime(timestamp_str[:14], '%Y%m%d%H%M%S')
                                 sync_age_seconds = int((datetime.utcnow() - csn_time).total_seconds())
                 except Exception as csn_err:
-                    print(f"Failed to get contextCSN for {node['host']}:{node['port']}: {csn_err}")
-                
+                    print(f"Failed to get contextCSN for {host}:{port}: {csn_err}")
+
                 client.disconnect()
-                
+
                 results.append({
-                    "node": f"{node['host']}:{node['port']}",
+                    "node": f"{host}:{port}",
                     "total": total,
                     "users": users,
                     "groups": groups,
@@ -87,7 +85,7 @@ async def get_node_sync_stats(cluster: str = Query(...)):
                 })
             except Exception as e:
                 results.append({
-                    "node": f"{node['host']}:{node['port']}",
+                    "node": f"{host}:{port}",
                     "total": 0,
                     "users": 0,
                     "groups": 0,
@@ -122,19 +120,19 @@ async def get_replication_topology(cluster: str = Query(...)):
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
-        nodes = []
-        if cluster_config.host:
+
+        # Get all nodes for topology analysis
+        all_nodes = NodeSelector.get_all_nodes(cluster_config)
+
+        if len(all_nodes) <= 1:
             return {"topology": []}
-        else:
-            nodes = cluster_config.nodes
-        
+
         topology = []
-        for node in nodes:
+        for host, port in all_nodes:
             try:
                 config = LDAPConfig(
-                    host=node['host'],
-                    port=node['port'],
+                    host=host,
+                    port=port,
                     bind_dn="cn=config",
                     bind_password=password,
                     base_dn=''
@@ -182,19 +180,19 @@ async def get_replication_topology(cluster: str = Query(...)):
                                     host_part = provider.split("://")[1].split(":")[0]
                                     peers.append({"host": host_part, "rid": rid})
                 except Exception as e:
-                    print(f"Syncrepl query error for {node['host']}: {e}")
-                
+                    print(f"Syncrepl query error for {host}: {e}")
+
                 client.disconnect()
-                
+
                 topology.append({
-                    "node": f"{node['host']}:{node['port']}",
+                    "node": f"{host}:{port}",
                     "server_id": server_id,
                     "reads_from": peers
                 })
             except Exception as e:
-                print(f"Node connection error for {node['host']}: {e}")
+                print(f"Node connection error for {host}: {e}")
                 topology.append({
-                    "node": f"{node['host']}:{node['port']}",
+                    "node": f"{host}:{port}",
                     "server_id": None,
                     "reads_from": []
                 })
@@ -215,24 +213,21 @@ async def test_replication(cluster: str = Query(...)):
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
-        
-        nodes = []
-        if cluster_config.host:
-            return {"success": False, "message": "Replication test only works for multi-node clusters"}
-        else:
-            nodes = cluster_config.nodes
-        
-        if len(nodes) < 2:
+
+        # Get all nodes for replication test
+        all_nodes = NodeSelector.get_all_nodes(cluster_config)
+
+        if len(all_nodes) < 2:
             return {"success": False, "message": "Need at least 2 nodes for replication test"}
-        
-        # Create test entry on first node
+
+        # Create test entry on first node (using WRITE operation type)
         test_id = f"repl-test-{int(time.time())}-{random.randint(1000, 9999)}"
         test_dn = f"cn={test_id},{cluster_config.base_dn}"
-        
-        first_node = nodes[0]
+
+        first_host, first_port = all_nodes[0]
         config = LDAPConfig(
-            host=first_node['host'],
-            port=first_node['port'],
+            host=first_host,
+            port=first_port,
             bind_dn=cluster_config.bind_dn,
             bind_password=password,
             base_dn=cluster_config.base_dn or ''
@@ -257,39 +252,39 @@ async def test_replication(cluster: str = Query(...)):
         # Wait for replication
         time.sleep(2)
         
-        # Check other nodes
+        # Check other nodes (skip first node)
         replication_results = []
-        for node in nodes[1:]:
+        for host, port in all_nodes[1:]:
             try:
                 config = LDAPConfig(
-                    host=node['host'],
-                    port=node['port'],
+                    host=host,
+                    port=port,
                     bind_dn=cluster_config.bind_dn,
                     bind_password=password,
                     base_dn=cluster_config.base_dn or ''
                 )
-                
+
                 client = LDAPClient(config)
                 client.connect()
-                
+
                 # Search for test entry
                 results, _, _ = client.search(test_dn, "(objectClass=*)", scope=ldap.SCOPE_BASE)
-                
+
                 if results and len(results) > 0:
                     replication_results.append({
-                        "node": f"{node['host']}:{node['port']}",
+                        "node": f"{host}:{port}",
                         "replicated": True
                     })
                 else:
                     replication_results.append({
-                        "node": f"{node['host']}:{node['port']}",
+                        "node": f"{host}:{port}",
                         "replicated": False
                     })
-                
+
                 client.disconnect()
             except Exception as e:
                 replication_results.append({
-                    "node": f"{node['host']}:{node['port']}",
+                    "node": f"{host}:{port}",
                     "replicated": False,
                     "error": str(e)
                 })
@@ -297,8 +292,8 @@ async def test_replication(cluster: str = Query(...)):
         # Cleanup test entry
         try:
             config = LDAPConfig(
-                host=first_node['host'],
-                port=first_node['port'],
+                host=first_host,
+                port=first_port,
                 bind_dn=cluster_config.bind_dn,
                 bind_password=password,
                 base_dn=cluster_config.base_dn or ''

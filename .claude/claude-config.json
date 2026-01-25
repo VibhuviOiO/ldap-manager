@@ -1,0 +1,5 @@
+{
+  "maxParallelAgents": 2,
+  "agentTokenBudget": 50000,
+  "explorationDepth": "medium"
+}

@@ -14,6 +14,7 @@ import { clusterService, entryService } from '@/services'
 import { DialogProvider, useDialogs } from '@/contexts/DialogContext'
 import { toast, getErrorMessage } from '@/lib/toast'
 import { TableColumns, Column } from '@/types'
+import { useClusterInfo } from '@/hooks/useClusterInfo'
 
 const MonitoringView = lazy(() => import('./MonitoringView'))
 const ActivityLogView = lazy(() => import('./ActivityLogView'))
@@ -29,14 +30,15 @@ function ClusterDetailsInner() {
   const [monitoring, setMonitoring] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalEntries, setTotalEntries] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [clusterConfig, setClusterConfig] = useState<any>(null)
   const [tableColumns, setTableColumns] = useState<TableColumns>({})
   const [visibleColumns, setVisibleColumns] = useState<Record<string, string[]>>({})
 
+  const { data: clusterConfig } = useClusterInfo(clusterName || '')
   const { openCreateDialog, openEditDialog, openPasswordDialog, openGroupsDialog, showCreateDialog, showEditDialog, showPasswordDialog, showGroupsDialog, editingEntry, passwordEntry, groupsEntry, closeCreateDialog, closeEditDialog, closePasswordDialog, closeGroupsDialog } = useDialogs()
 
   const handleViewChange = (view: 'users' | 'groups' | 'ous' | 'all' | 'monitoring' | 'activity') => {
@@ -45,26 +47,33 @@ function ClusterDetailsInner() {
   }
 
   useEffect(() => {
-    loadMonitoring()
-    loadClusterConfig()
     loadTableColumns()
   }, [clusterName])
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      if (searchQuery) {
+        setPage(1)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Only load health check when viewing monitoring tab
+  useEffect(() => {
+    if (activeView === 'monitoring') {
+      loadMonitoring()
+    }
+  }, [clusterName, activeView])
+
+  // Main data loading effect
   useEffect(() => {
     if (['users', 'groups', 'ous', 'all'].includes(activeView)) {
       loadClusterData()
     }
-  }, [clusterName, activeView, page, pageSize])
-
-  useEffect(() => {
-    if (searchQuery) {
-      const timer = setTimeout(() => {
-        setPage(1)
-        loadClusterData()
-      }, 300)
-      return () => clearTimeout(timer)
-    }
-  }, [searchQuery])
+  }, [clusterName, activeView, page, pageSize, debouncedSearch])
 
   const loadTableColumns = async () => {
     try {
@@ -127,7 +136,7 @@ function ClusterDetailsInner() {
         page,
         page_size: Math.min(pageSize, 100), // Limit to 100 entries max
         filter_type: filterType,
-        search: searchQuery || undefined
+        search: debouncedSearch || undefined
       })
       
       setEntries(result.entries || [])
@@ -157,16 +166,6 @@ function ClusterDetailsInner() {
     } catch (err) {
       console.error('Failed to load monitoring data', err)
       setMonitoring({ status: 'error', message: 'Failed to check cluster health' })
-    }
-  }
-
-  const loadClusterConfig = async () => {
-    try {
-      const clusters = await clusterService.getClusters()
-      const cluster = clusters.find((c) => c.name === clusterName)
-      setClusterConfig(cluster)
-    } catch (err) {
-      console.error('Failed to load cluster config', err)
     }
   }
 

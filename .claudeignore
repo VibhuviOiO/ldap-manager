@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Large files
+*.mp4
+*.zip
+*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Compiled
+*.pyc
+__pycache__/
