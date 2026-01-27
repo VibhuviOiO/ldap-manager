@@ -1,4 +1,4 @@
-name: Docker Registry UI CI/CD
+name: LDAP Manager Docker Publish
 
 permissions:
   contents: read
