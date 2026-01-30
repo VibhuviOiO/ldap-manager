@@ -1,14 +1,16 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
-import { Home, Moon, Sun, BookOpen } from 'lucide-react'
+import { Home, Moon, Sun, BookOpen, LogOut, User } from 'lucide-react'
 import axios from 'axios'
 import { Toaster } from 'sonner'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Dashboard from './components/Dashboard'
 import ClusterDetails from './components/ClusterDetails'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { LoadingSpinner } from './components/LoadingSpinner'
 import { useAppStore } from './store/appStore'
 import { useClusterInfo } from './hooks/useClusterInfo'
+import { getKeycloakService } from './services/auth/KeycloakService'
 import logo from './assets/ldap.svg'
 
 const queryClient = new QueryClient({
@@ -30,7 +32,12 @@ function Header() {
   const isClusterPage = location.pathname.startsWith('/cluster/')
   const clusterName = isClusterPage ? decodeURIComponent(location.pathname.split('/cluster/')[1]) : ''
   const { data: clusterInfo } = useClusterInfo(clusterName)
-  const { theme, setTheme } = useAppStore()
+  const { theme, setTheme, user } = useAppStore()
+  const keycloak = getKeycloakService()
+
+  const handleLogout = async () => {
+    await keycloak.logout()
+  }
 
   return (
     <header className="border-b bg-card sticky top-0 z-50 backdrop-blur-sm bg-card/95">
@@ -56,6 +63,17 @@ function Header() {
             )}
           </div>
           <div className="flex items-center space-x-4">
+            {/* User info */}
+            {user && (
+              <div className="flex items-center space-x-2 px-3 py-2 bg-accent/50 rounded-md">
+                <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-medium">{user.username}</span>
+                {user.roles.length > 0 && (
+                  <span className="text-xs text-muted-foreground">({user.roles[0]})</span>
+                )}
+              </div>
+            )}
+
             <a
               href="https://vibhuvioio.com/ldap-manager/"
               target="_blank"
@@ -65,6 +83,7 @@ function Header() {
             >
               <BookOpen className="h-5 w-5" aria-hidden="true" />
             </a>
+
             <button
               onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
               className="p-2 hover:bg-accent rounded-md transition-colors"
@@ -72,6 +91,18 @@ function Header() {
             >
               {theme === 'light' ? <Moon className="h-5 w-5" aria-hidden="true" /> : <Sun className="h-5 w-5" aria-hidden="true" />}
             </button>
+
+            {/* Logout button */}
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                aria-label="Logout"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span>Logout</span>
+              </button>
+            )}
           {isClusterPage && (
             <div className="text-right">
               <h2 className="text-lg font-semibold text-foreground">{clusterName}</h2>
@@ -87,7 +118,48 @@ function Header() {
 
 function App() {
   const basename = import.meta.env.VITE_CONTEXT_PATH || '/'
-  
+  const { isAuthenticated, isLoading, setUser, setLoading } = useAppStore()
+
+  useEffect(() => {
+    // Initialize Keycloak on app load
+    const initAuth = async () => {
+      const keycloak = getKeycloakService()
+      try {
+        const authenticated = await keycloak.init()
+
+        if (authenticated) {
+          const user = keycloak.getUser()
+          setUser(user)
+          console.log('✅ User authenticated:', user?.username)
+        } else {
+          setLoading(false)
+          console.log('❌ User not authenticated')
+        }
+      } catch (error) {
+        console.error('❌ Keycloak initialization failed:', error)
+        setLoading(false)
+      }
+    }
+
+    initAuth()
+  }, [setUser, setLoading])
+
+  // Show loading spinner while auth initializes
+  if (isLoading) {
+    return <LoadingSpinner />
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <p className="text-lg text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -108,7 +180,7 @@ function App() {
 
             <footer className="border-t bg-card/50">
               <div className="container mx-auto px-6 py-4">
-                <p 
+                <p
                   className="text-xs text-muted-foreground text-center"
                   dangerouslySetInnerHTML={{ __html: import.meta.env.VITE_FOOTER_TEXT }}
                 />

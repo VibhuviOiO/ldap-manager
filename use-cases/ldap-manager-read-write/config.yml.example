@@ -1,0 +1,178 @@
+# LDAP Manager - Read-Write Mode Configuration
+#
+# NOTE: In read-write mode, LDAP passwords are OPTIONAL in config.yml
+# Users can configure passwords via the UI (encrypted cache with 1-hour TTL)
+#
+# Security Note: Set file permissions to 600 (chmod 600 config.yml)
+
+clusters:
+  # Example 1: Single-node cluster (password configured via UI)
+  - name: "vibhuvioio.com"
+    host: "ldap.vibhuvioio.com"
+    port: 389
+    bind_dn: "cn=Manager,dc=vibhuvioio,dc=com"
+    # bind_password: "changeme"  # Optional - can configure via UI
+    base_dn: "dc=vibhuvioio,dc=com"
+    readonly: false
+    description: "Production LDAP Cluster"
+
+    # User creation form (full customization)
+    user_creation_form:
+      base_ou: "ou=People,dc=vibhuvioio,dc=com"
+      object_classes: [inetOrgPerson, posixAccount, shadowAccount]
+      fields:
+        - name: uid
+          label: Username
+          type: text
+          required: true
+
+        - name: cn
+          label: Full Name
+          type: text
+          required: true
+
+        - name: sn
+          label: Last Name
+          type: text
+          required: true
+
+        - name: mail
+          label: Email
+          type: email
+          required: true
+
+        - name: userPassword
+          label: Password
+          type: password
+          required: true
+
+        - name: uidNumber
+          label: UID Number
+          type: number
+          auto_generate: "next_uid"
+          readonly: true
+
+        - name: gidNumber
+          label: Primary Group ID
+          type: number
+          default: 100
+
+        - name: homeDirectory
+          label: Home Directory
+          auto_generate: "/home/${uid}"
+          readonly: true
+
+        - name: loginShell
+          label: Login Shell
+          type: select
+          options: [/bin/bash, /bin/sh, /bin/zsh, /usr/sbin/nologin]
+          default: /bin/bash
+
+        - name: shadowLastChange
+          label: Shadow Last Change
+          type: number
+          auto_generate: "days_since_epoch"
+          readonly: true
+
+        - name: shadowMax
+          label: Password Max Age (days)
+          type: number
+          default: 99999
+
+        - name: telephoneNumber
+          label: Phone Number
+          type: tel
+          required: false
+
+        - name: title
+          label: Job Title
+          type: text
+          required: false
+
+    # Custom table columns
+    table_columns:
+      users:
+        - name: uid
+          label: Username
+          default_visible: true
+        - name: cn
+          label: Full Name
+          default_visible: true
+        - name: mail
+          label: Email
+          default_visible: true
+        - name: uidNumber
+          label: UID
+          default_visible: false
+        - name: homeDirectory
+          label: Home
+          default_visible: false
+        - name: loginShell
+          label: Shell
+          default_visible: false
+
+      groups:
+        - name: cn
+          label: Group Name
+          default_visible: true
+        - name: description
+          label: Description
+          default_visible: true
+        - name: gidNumber
+          label: GID
+          default_visible: true
+        - name: uniqueMember
+          label: Members
+          default_visible: false
+
+  # Example 2: Multi-node cluster (HA setup)
+  - name: "vibhuvi.com"
+    nodes:
+      - host: "ldap1.vibhuvi.com"
+        port: 389
+        name: "node1"
+      - host: "ldap2.vibhuvi.com"
+        port: 389
+        name: "node2"
+      - host: "ldap3.vibhuvi.com"
+        port: 389
+        name: "node3"
+
+    bind_dn: "cn=Manager,dc=vibhuvi,dc=com"
+    # bind_password: "changeme"  # Optional
+    base_dn: "dc=vibhuvi,dc=com"
+    readonly: false
+    description: "High Availability LDAP Cluster"
+
+  # Example 3: LDAPS (TLS/SSL)
+  - name: "secure.company.com"
+    host: "ldaps.company.com"
+    port: 636
+    bind_dn: "cn=admin,dc=company,dc=com"
+    # bind_password: "secure-password"  # Optional
+    base_dn: "dc=company,dc=com"
+    use_tls: true
+    readonly: false
+    description: "Secure LDAP Server (LDAPS)"
+
+    # Minimal user creation form
+    user_creation_form:
+      base_ou: "ou=Users,dc=company,dc=com"
+      object_classes: [inetOrgPerson]
+      fields:
+        - name: cn
+          label: Full Name
+          type: text
+          required: true
+        - name: sn
+          label: Last Name
+          type: text
+          required: true
+        - name: mail
+          label: Email
+          type: email
+          required: true
+        - name: userPassword
+          label: Password
+          type: password
+          required: true

@@ -1,0 +1,77 @@
+# LDAP Manager - Read-Only Mode Configuration
+#
+# IMPORTANT: In read-only mode, LDAP passwords MUST be configured here
+# since users cannot configure connections via the UI.
+#
+# Security Note: Set file permissions to 600 (chmod 600 config.yml)
+
+clusters:
+  # Example 1: Single-node cluster
+  - name: "vibhuvioio.com"
+    host: "ldap.vibhuvioio.com"
+    port: 389
+    bind_dn: "cn=Manager,dc=vibhuvioio,dc=com"
+    bind_password: "changeme"  # REQUIRED for read-only mode
+    base_dn: "dc=vibhuvioio,dc=com"
+    readonly: false
+    description: "Production LDAP Cluster"
+
+    # Custom table columns for read-only display
+    table_columns:
+      users:
+        - name: uid
+          label: Username
+          default_visible: true
+        - name: cn
+          label: Full Name
+          default_visible: true
+        - name: mail
+          label: Email
+          default_visible: true
+        - name: telephoneNumber
+          label: Phone
+          default_visible: false
+        - name: title
+          label: Job Title
+          default_visible: true
+
+      groups:
+        - name: cn
+          label: Group Name
+          default_visible: true
+        - name: description
+          label: Description
+          default_visible: true
+        - name: uniqueMember
+          label: Members
+          default_visible: false
+
+  # Example 2: Multi-node cluster (high availability)
+  - name: "vibhuvi.com"
+    nodes:
+      - host: "ldap1.vibhuvi.com"
+        port: 389
+        name: "node1"
+      - host: "ldap2.vibhuvi.com"
+        port: 389
+        name: "node2"
+      - host: "ldap3.vibhuvi.com"
+        port: 389
+        name: "node3"
+
+    bind_dn: "cn=Manager,dc=vibhuvi,dc=com"
+    bind_password: "changeme"  # REQUIRED
+    base_dn: "dc=vibhuvi,dc=com"
+    readonly: false
+    description: "High Availability LDAP Cluster"
+
+  # Example 3: LDAPS (TLS/SSL)
+  - name: "secure.company.com"
+    host: "ldaps.company.com"
+    port: 636
+    bind_dn: "cn=admin,dc=company,dc=com"
+    bind_password: "secure-password"  # REQUIRED
+    base_dn: "dc=company,dc=com"
+    use_tls: true
+    readonly: false
+    description: "Secure LDAP Server (LDAPS)"

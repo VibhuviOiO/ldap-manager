@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for Keycloak
+  postgres:
+    image: postgres:16-alpine
+    container_name: ldap-manager-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-keycloak}
+      - POSTGRES_USER=${POSTGRES_USER:-keycloak}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-keycloak}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ldap-network
+
+  # Keycloak authentication server with PostgreSQL
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: ldap-manager-keycloak
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Admin credentials (CHANGE IN PRODUCTION)
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+
+      # PostgreSQL database configuration
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-keycloak}
+      - KC_DB_USERNAME=${POSTGRES_USER:-keycloak}
+      - KC_DB_PASSWORD=${POSTGRES_PASSWORD:-keycloak}
+
+      # Hostname configuration
+      - KC_HOSTNAME=${KC_HOSTNAME:-localhost}
+      - KC_HOSTNAME_STRICT=false
+      - KC_PROXY=edge
+
+      # Health check
+      - KC_HEALTH_ENABLED=true
+
+      # HTTP configuration
+      - KC_HTTP_RELATIVE_PATH=/
+
+      # Performance tuning
+      - KC_CACHE=ispn
+      - KC_CACHE_STACK=kubernetes
+      - JAVA_OPTS_APPEND=-Xms512m -Xmx1024m
+
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+
+    command:
+      - start
+      - --import-realm
+      - --optimized
+      - --proxy=edge
+
+    volumes:
+      # Pre-configured realm with test users
+      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200\\|UP' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - ldap-network
+
+  # LDAP Manager application
+  ldap-manager:
+    image: ldap-manager:latest
+    container_name: ldap-manager-auth
+    restart: unless-stopped
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+
+    environment:
+      # Deployment Mode: Keycloak Authentication
+      - AUTH_MODE=keycloak
+      - READONLY_MODE=false  # Ignored in keycloak mode
+
+      # Application Configuration
+      - PYTHONUNBUFFERED=1
+      - CONTEXT_PATH=${CONTEXT_PATH:-}
+
+      # Backend Keycloak configuration (internal URL)
+      - KEYCLOAK_URL=${KEYCLOAK_URL:-http://keycloak:8080}
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER:-http://localhost:8080/realms/ldap-manager}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-ldap-manager}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-ldap-manager-client}
+
+      # Frontend Keycloak configuration (browser-accessible URL)
+      - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL:-http://localhost:8080}
+      - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM:-ldap-manager}
+      - VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID:-ldap-manager-client}
+
+      # CORS Configuration
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - JSON_LOGS=${JSON_LOGS:-true}
+
+      # Rate Limiting (use Redis for multi-instance setup)
+      - REDIS_URL=${REDIS_URL:-memory://}
+
+      # UI Configuration
+      - VITE_FOOTER_TEXT=${VITE_FOOTER_TEXT:-LDAP Manager (Authenticated)}
+
+    volumes:
+      # Configuration (read-only)
+      - ./config.yml:/app/config.yml:ro
+
+      # Persistent volumes
+      - ldap-cache:/app/.cache
+      - ldap-secrets:/app/.secrets
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - ldap-network
+
+  # Optional: Redis for distributed rate limiting (multi-instance)
+  # Uncomment to enable Redis-based rate limiting
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ldap-manager-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 256M
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   networks:
+  #     - ldap-network
+
+volumes:
+  postgres-data:
+    driver: local
+  keycloak-data:
+    driver: local
+  ldap-cache:
+    driver: local
+  ldap-secrets:
+    driver: local
+  # redis-data:
+  #   driver: local
+
+networks:
+  ldap-network:
+    driver: bridge

@@ -7,9 +7,12 @@ import os
 import time
 import logging
 from datetime import datetime
-from app.api import connection, entries, monitoring, logs, clusters, password
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.api import connection, entries, monitoring, logs, clusters, password, backup
 from app.core.connection_pool import pool as ldap_pool
 from app.core.logging_config import setup_logging
+from app.core.rate_limit import limiter
 
 # Setup structured logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -32,6 +35,10 @@ app = FastAPI(
     root_path=CONTEXT_PATH
 )
 
+# Add rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -43,9 +50,25 @@ app.add_middleware(
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all HTTP requests with timing information."""
+    """Log all HTTP requests with timing and user context information."""
     start_time = time.time()
     request_id = f"{int(start_time * 1000)}"
+
+    # Extract user context from JWT token (if present)
+    user_info = {"user_id": "anonymous", "username": "anonymous"}
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            from app.core.auth import verify_token
+            token = auth_header.split(" ")[1]
+            payload = verify_token(token)
+            user_info = {
+                "user_id": payload.get("sub", "unknown"),
+                "username": payload.get("preferred_username", "unknown")
+            }
+        except Exception:
+            # Token validation failed, keep anonymous
+            pass
 
     logger.info(
         "Request started",
@@ -53,7 +76,8 @@ async def log_requests(request: Request, call_next):
             "request_id": request_id,
             "method": request.method,
             "path": request.url.path,
-            "client_ip": request.client.host if request.client else None
+            "client_ip": request.client.host if request.client else None,
+            **user_info
         }
     )
 
@@ -67,7 +91,8 @@ async def log_requests(request: Request, call_next):
             "method": request.method,
             "path": request.url.path,
             "status_code": response.status_code,
-            "duration_ms": round(duration * 1000, 2)
+            "duration_ms": round(duration * 1000, 2),
+            **user_info
         }
     )
 
@@ -79,6 +104,7 @@ app.include_router(connection.router, prefix="/api/connection", tags=["connectio
 app.include_router(entries.router, prefix="/api/entries", tags=["entries"])
 app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
 app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+app.include_router(backup.router)
 
 # Lifecycle events
 @app.on_event("startup")

@@ -1,7 +1,39 @@
 services:
+  # Keycloak authentication server
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: ldap-manager-keycloak
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_RELATIVE_PATH=/
+      - KC_HOSTNAME_STRICT=false
+      - KC_PROXY=edge
+      - KC_HEALTH_ENABLED=true
+    ports:
+      - "8080:8080"
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200\\|UP' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - ldap-network
+
+  # LDAP Manager application
   ldap-manager:
     build: .
     container_name: ldap-manager
+    depends_on:
+      keycloak:
+        condition: service_healthy
     ports:
       - "8000:8000"
       - "5173:5173"
@@ -9,8 +41,45 @@ services:
       - PYTHONUNBUFFERED=1
       - CONTEXT_PATH=${CONTEXT_PATH:-}
       - VITE_FOOTER_TEXT=${VITE_FOOTER_TEXT:-LDAP Manager • Built by <a href="https://vibhuvioio.com" target="_blank" class="text-primary hover:underline">Vibhuvi OiO</a>}
+
+      # Backend Keycloak configuration
+      - KEYCLOAK_URL=${KEYCLOAK_URL:-http://keycloak:8080}  # Internal URL for JWKS
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER:-http://localhost:8080/realms/ldap-manager}  # Expected issuer in tokens
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-ldap-manager}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-ldap-manager-client}
+
+      # Deployment modes
+      - AUTH_MODE=${AUTH_MODE:-keycloak}  # "keycloak" or "legacy"
+      - READONLY_MODE=${READONLY_MODE:-false}  # "true" or "false" (only applies when AUTH_MODE=legacy)
+      - DEVELOPMENT_MODE=${DEVELOPMENT_MODE:-false}
+
+      # Frontend Keycloak configuration (browser-accessible URL)
+      - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL:-http://localhost:8080}
+      - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM:-ldap-manager}
+      - VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID:-ldap-manager-client}
+
+      # Existing
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - JSON_LOGS=${JSON_LOGS:-false}
     volumes:
       - ./backend/app:/app/app
       - ./frontend/src:/frontend/src
       - ./frontend/vite.config.ts:/frontend/vite.config.ts
       - ./config.yml:/app/config.yml:ro
+      - ldap-cache:/app/.cache
+      - ldap-secrets:/app/.secrets
+    networks:
+      - ldap-network
+
+volumes:
+  keycloak-data:
+    driver: local
+  ldap-cache:
+    driver: local
+  ldap-secrets:
+    driver: local
+
+networks:
+  ldap-network:
+    driver: bridge

@@ -1,15 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.core.config import load_config
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.password_cache import get_password
 from app.core.node_selector import NodeSelector, OperationType
+from app.core.auth import get_current_user, User
+from app.core.rbac import viewer_required
 from pathlib import Path
 import ldap
 
 router = APIRouter()
 
 @router.get("/list")
-async def list_clusters():
+@viewer_required
+async def list_clusters(user: User = Depends(get_current_user)):
     config_path = Path("/app/config.yml")
     if not config_path.exists():
         raise HTTPException(
@@ -46,7 +49,11 @@ async def list_clusters():
         )
 
 @router.get("/get/{cluster_name}")
-async def get_cluster(cluster_name: str):
+@viewer_required
+async def get_cluster(
+    cluster_name: str,
+    user: User = Depends(get_current_user)
+):
     """Get configuration for a single cluster"""
     try:
         clusters = load_config()
@@ -70,7 +77,11 @@ async def get_cluster(cluster_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to load cluster config: {str(e)}")
 
 @router.get("/health/{cluster_name}")
-async def check_cluster_health(cluster_name: str):
+@viewer_required
+async def check_cluster_health(
+    cluster_name: str,
+    user: User = Depends(get_current_user)
+):
     try:
         clusters = load_config()
         cluster_config = next((c for c in clusters if c.name == cluster_name), None)
@@ -128,7 +139,11 @@ async def check_cluster_health(cluster_name: str):
         }
 
 @router.get("/form/{cluster_name}")
-async def get_user_creation_form(cluster_name: str):
+@viewer_required
+async def get_user_creation_form(
+    cluster_name: str,
+    user: User = Depends(get_current_user)
+):
     try:
         clusters = load_config()
         cluster_config = next((c for c in clusters if c.name == cluster_name), None)
@@ -146,7 +161,11 @@ async def get_user_creation_form(cluster_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to load form config: {str(e)}")
 
 @router.get("/columns/{cluster_name}")
-async def get_table_columns(cluster_name: str):
+@viewer_required
+async def get_table_columns(
+    cluster_name: str,
+    user: User = Depends(get_current_user)
+):
     try:
         clusters = load_config()
         cluster_config = next((c for c in clusters if c.name == cluster_name), None)
@@ -160,7 +179,11 @@ async def get_table_columns(cluster_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to load columns config: {str(e)}")
 
 @router.get("/password-policy/{cluster_name}")
-async def get_password_policy(cluster_name: str):
+@viewer_required
+async def get_password_policy(
+    cluster_name: str,
+    user: User = Depends(get_current_user)
+):
     try:
         clusters = load_config()
         cluster_config = next((c for c in clusters if c.name == cluster_name), None)

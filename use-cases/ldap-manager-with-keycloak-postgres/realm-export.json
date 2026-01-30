@@ -1,0 +1,198 @@
+{
+  "realm": "ldap-manager",
+  "displayName": "LDAP Manager",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "loginTheme": "keycloak",
+  "accountTheme": "keycloak",
+  "adminTheme": "keycloak",
+  "emailTheme": "keycloak",
+  "accessTokenLifespan": 900,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespan": 5184000,
+  "refreshTokenMaxReuse": 0,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "clients": [
+    {
+      "clientId": "ldap-manager-client",
+      "name": "LDAP Manager Web Application",
+      "description": "Web application for managing LDAP directories",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "**********",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8000/*",
+        "https://ldap.company.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8000",
+        "https://ldap.company.com"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ]
+    }
+  ],
+  "roles": {
+    "client": {
+      "ldap-manager-client": [
+        {
+          "name": "admin",
+          "description": "Full access to LDAP Manager - can create, read, update, and delete entries",
+          "composite": false,
+          "clientRole": true
+        },
+        {
+          "name": "editor",
+          "description": "Read and write access - can create and update entries, but cannot delete",
+          "composite": false,
+          "clientRole": true
+        },
+        {
+          "name": "viewer",
+          "description": "Read-only access - can view entries and statistics",
+          "composite": false,
+          "clientRole": true
+        },
+        {
+          "name": "auditor",
+          "description": "Access to audit logs and monitoring",
+          "composite": false,
+          "clientRole": true
+        }
+      ]
+    }
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@ldap-manager.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "ldap-manager-client": ["admin"]
+      },
+      "realmRoles": []
+    },
+    {
+      "username": "editor",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Editor",
+      "lastName": "User",
+      "email": "editor@ldap-manager.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "editor123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "ldap-manager-client": ["editor"]
+      },
+      "realmRoles": []
+    },
+    {
+      "username": "viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Viewer",
+      "lastName": "User",
+      "email": "viewer@ldap-manager.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "viewer123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "ldap-manager-client": ["viewer"]
+      },
+      "realmRoles": []
+    },
+    {
+      "username": "auditor",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Auditor",
+      "lastName": "User",
+      "email": "auditor@ldap-manager.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "auditor123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "ldap-manager-client": ["auditor"]
+      },
+      "realmRoles": []
+    }
+  ],
+  "groups": [
+    {
+      "name": "LDAP Admins",
+      "path": "/LDAP Admins",
+      "clientRoles": {
+        "ldap-manager-client": ["admin"]
+      }
+    },
+    {
+      "name": "LDAP Editors",
+      "path": "/LDAP Editors",
+      "clientRoles": {
+        "ldap-manager-client": ["editor"]
+      }
+    },
+    {
+      "name": "LDAP Viewers",
+      "path": "/LDAP Viewers",
+      "clientRoles": {
+        "ldap-manager-client": ["viewer"]
+      }
+    }
+  ],
+  "defaultRole": {
+    "name": "default-roles-ldap-manager",
+    "composite": true
+  }
+}
