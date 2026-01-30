@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from app.core.ldap_client import LDAPClient, LDAPConfig
 from app.core.config import load_config
 from app.core.password_cache import get_password
 from app.core.node_selector import NodeSelector, OperationType
+from app.core.auth import get_current_user, User
+from app.core.rbac import viewer_required, editor_required, admin_only
 import ldap
 import ldap.filter
 import logging
@@ -43,7 +45,11 @@ class EntryUpdateRequest(BaseModel):
     modifications: Dict
 
 @router.get("/stats")
-async def get_entry_stats(cluster: str = Query(...)):
+@viewer_required
+async def get_entry_stats(
+    cluster: str = Query(...),
+    user: User = Depends(get_current_user)
+):
     """Get entry counts by object class without fetching full entries"""
     try:
         clusters = load_config()
@@ -53,7 +59,7 @@ async def get_entry_stats(cluster: str = Query(...)):
 
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for READ operation (uses last node with failover)
         host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
@@ -98,12 +104,14 @@ async def get_entry_stats(cluster: str = Query(...)):
 
 
 @router.get("/search")
+@viewer_required
 async def search_by_cluster(
     cluster: str = Query(...),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=10000),
     search: str = Query(None),
-    filter_type: str = Query(None)
+    filter_type: str = Query(None),
+    user: User = Depends(get_current_user)
 ):
     try:
         clusters = load_config()
@@ -113,7 +121,7 @@ async def search_by_cluster(
         
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
         
         # Select node for READ operation (uses last node with failover)
         host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
@@ -216,7 +224,11 @@ class EntryCreateRequest(BaseModel):
     attributes: Dict
 
 @router.post("/create")
-async def create_entry(req: EntryCreateRequest):
+@editor_required
+async def create_entry(
+    req: EntryCreateRequest,
+    user: User = Depends(get_current_user)
+):
     try:
         clusters = load_config()
         cluster_config = next((c for c in clusters if c.name == req.cluster_name), None)
@@ -228,7 +240,7 @@ async def create_entry(req: EntryCreateRequest):
         
         password = get_password(req.cluster_name, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for WRITE operation (uses first node for consistency)
         host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
@@ -281,6 +293,8 @@ async def create_entry(req: EntryCreateRequest):
         logger.info(
             "LDAP entry created",
             extra={
+                "user_id": user.user_id,
+                "username": user.username,
                 "cluster": req.cluster_name,
                 "dn": req.dn,
                 "operation": "CREATE",
@@ -293,7 +307,11 @@ async def create_entry(req: EntryCreateRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/update")
-async def update_entry(req: EntryUpdateRequest):
+@editor_required
+async def update_entry(
+    req: EntryUpdateRequest,
+    user: User = Depends(get_current_user)
+):
     try:
         clusters = load_config()
         cluster_config = next((c for c in clusters if c.name == req.cluster_name), None)
@@ -305,7 +323,7 @@ async def update_entry(req: EntryUpdateRequest):
         
         password = get_password(req.cluster_name, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for WRITE operation (uses first node for consistency)
         host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
@@ -347,6 +365,8 @@ async def update_entry(req: EntryUpdateRequest):
         logger.info(
             "LDAP entry updated",
             extra={
+                "user_id": user.user_id,
+                "username": user.username,
                 "cluster": req.cluster_name,
                 "dn": req.dn,
                 "operation": "UPDATE",
@@ -359,9 +379,11 @@ async def update_entry(req: EntryUpdateRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/delete")
+@admin_only
 async def delete_entry(
     cluster_name: str = Query(...),
-    dn: str = Query(...)
+    dn: str = Query(...),
+    user: User = Depends(get_current_user)
 ):
     try:
         clusters = load_config()
@@ -374,7 +396,7 @@ async def delete_entry(
 
         password = get_password(cluster_name, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for WRITE operation (uses first node for consistency)
         host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)
@@ -396,6 +418,8 @@ async def delete_entry(
         logger.warning(
             "LDAP entry deleted",
             extra={
+                "user_id": user.user_id,
+                "username": user.username,
                 "cluster": cluster_name,
                 "dn": dn,
                 "operation": "DELETE"
@@ -417,7 +441,11 @@ class GroupMembershipRequest(BaseModel):
 
 
 @router.get("/groups/all")
-async def get_all_groups(cluster: str = Query(...)):
+@viewer_required
+async def get_all_groups(
+    cluster: str = Query(...),
+    user: User = Depends(get_current_user)
+):
     """Get all available groups in the cluster"""
     try:
         clusters = load_config()
@@ -427,7 +455,7 @@ async def get_all_groups(cluster: str = Query(...)):
 
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for READ operation (uses last node with failover)
         host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
@@ -451,9 +479,11 @@ async def get_all_groups(cluster: str = Query(...)):
 
 
 @router.get("/user/groups")
+@viewer_required
 async def get_user_groups(
     cluster: str = Query(...),
-    user_dn: str = Query(...)
+    user_dn: str = Query(...),
+    user: User = Depends(get_current_user)
 ):
     """Get all groups that a user belongs to"""
     try:
@@ -464,7 +494,7 @@ async def get_user_groups(
 
         password = get_password(cluster, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for READ operation (uses last node with failover)
         host, port = NodeSelector.select_node(cluster_config, OperationType.READ)
@@ -488,7 +518,11 @@ async def get_user_groups(
 
 
 @router.put("/user/groups")
-async def update_user_groups(req: GroupMembershipRequest):
+@editor_required
+async def update_user_groups(
+    req: GroupMembershipRequest,
+    user: User = Depends(get_current_user)
+):
     """Add or remove user from groups"""
     try:
         clusters = load_config()
@@ -501,7 +535,7 @@ async def update_user_groups(req: GroupMembershipRequest):
 
         password = get_password(req.cluster_name, cluster_config.bind_dn)
         if not password:
-            raise HTTPException(status_code=401, detail="Password not configured")
+            raise HTTPException(status_code=401, detail="LDAP connection not configured. Contact admin to set up cluster connection.")
 
         # Select node for WRITE operation (uses first node for consistency)
         host, port = NodeSelector.select_node(cluster_config, OperationType.WRITE)

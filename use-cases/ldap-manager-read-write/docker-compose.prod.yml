@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  ldap-manager:
+    image: ldap-manager:latest
+    container_name: ldap-manager-readwrite
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    environment:
+      # Deployment Mode: Read-Write (No Authentication)
+      - AUTH_MODE=legacy
+      - READONLY_MODE=false
+
+      # Application Configuration
+      - PYTHONUNBUFFERED=1
+      - CONTEXT_PATH=${CONTEXT_PATH:-}
+
+      # CORS Configuration
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - JSON_LOGS=${JSON_LOGS:-true}
+
+      # UI Configuration
+      - VITE_FOOTER_TEXT=${VITE_FOOTER_TEXT:-LDAP Manager}
+
+    volumes:
+      # Configuration (read-only)
+      - ./config.yml:/app/config.yml:ro
+
+      # Persistent volumes
+      - ldap-cache:/app/.cache
+      - ldap-secrets:/app/.secrets
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - ldap-network
+
+volumes:
+  ldap-cache:
+    driver: local
+  ldap-secrets:
+    driver: local
+
+networks:
+  ldap-network:
+    driver: bridge

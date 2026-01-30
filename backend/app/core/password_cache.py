@@ -67,14 +67,23 @@ def _get_fernet():
 
 
 def _hash_key(cluster_name: str, bind_dn: str) -> str:
-    """Create hash of cluster+bind_dn for cache filename"""
+    """
+    Create hash of cluster+bind_dn for cache filename (shared cache).
+
+    Args:
+        cluster_name: LDAP cluster name
+        bind_dn: Bind DN
+
+    Returns:
+        SHA256 hash for cache filename
+    """
     key = f"{cluster_name}:{bind_dn}"
     return hashlib.sha256(key.encode()).hexdigest()
 
 
 def save_password(cluster_name: str, bind_dn: str, password: str, ttl: int = DEFAULT_TTL):
     """
-    Save password to encrypted cache file.
+    Save password to encrypted cache file (shared - configured by admin).
 
     Args:
         cluster_name: LDAP cluster name
@@ -105,7 +114,7 @@ def save_password(cluster_name: str, bind_dn: str, password: str, ttl: int = DEF
 
 def get_password(cluster_name: str, bind_dn: str) -> Optional[str]:
     """
-    Retrieve and decrypt password from cache.
+    Retrieve and decrypt password from cache (shared).
 
     Args:
         cluster_name: LDAP cluster name
@@ -167,7 +176,7 @@ def clear_password(cluster_name: str, bind_dn: str):
 
 def get_cache_status(cluster_name: str, bind_dn: str) -> dict:
     """
-    Get cache status information without decrypting password.
+    Get cache status information without decrypting password (shared).
 
     Args:
         cluster_name: LDAP cluster name

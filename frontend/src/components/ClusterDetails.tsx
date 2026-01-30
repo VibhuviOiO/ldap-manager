@@ -10,6 +10,7 @@ import EditUserDialog from './EditUserDialog'
 import ChangePasswordDialog from './ChangePasswordDialog'
 import ManageGroupsDialog from './ManageGroupsDialog'
 import ColumnSettings from './ColumnSettings'
+import BackupButton from './BackupButton'
 import { clusterService, entryService } from '@/services'
 import { DialogProvider, useDialogs } from '@/contexts/DialogContext'
 import { toast, getErrorMessage } from '@/lib/toast'
@@ -261,6 +262,9 @@ function ClusterDetailsInner() {
                   <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                   Create User
                 </Button>
+              )}
+              {clusterName && (
+                <BackupButton cluster={clusterName} />
               )}
               {tableColumns[activeView] && (
                 <ColumnSettings

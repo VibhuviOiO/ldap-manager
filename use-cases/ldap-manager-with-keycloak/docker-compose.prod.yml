@@ -1,0 +1,165 @@
+version: '3.8'
+
+services:
+  # Keycloak authentication server
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: ldap-manager-keycloak
+    restart: unless-stopped
+    environment:
+      # Admin credentials (CHANGE IN PRODUCTION)
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+
+      # Database (H2 embedded - for development/small deployments)
+      - KC_DB=h2-file
+      - KC_DB_URL_DATABASE=/opt/keycloak/data/h2/keycloak
+
+      # Hostname configuration
+      - KC_HOSTNAME=${KC_HOSTNAME:-localhost}
+      - KC_HOSTNAME_STRICT=false
+      - KC_PROXY=edge
+
+      # Health check
+      - KC_HEALTH_ENABLED=true
+
+      # HTTP configuration
+      - KC_HTTP_RELATIVE_PATH=/
+
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+
+    command:
+      - start
+      - --import-realm
+      - --optimized
+      - --proxy=edge
+
+    volumes:
+      # Pre-configured realm with test users
+      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+      # Persistent database
+      - keycloak-data:/opt/keycloak/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200\\|UP' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - ldap-network
+
+  # LDAP Manager application
+  ldap-manager:
+    image: ldap-manager:latest
+    container_name: ldap-manager-auth
+    restart: unless-stopped
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+
+    environment:
+      # Deployment Mode: Keycloak Authentication
+      - AUTH_MODE=keycloak
+      - READONLY_MODE=false  # Ignored in keycloak mode
+
+      # Application Configuration
+      - PYTHONUNBUFFERED=1
+      - CONTEXT_PATH=${CONTEXT_PATH:-}
+
+      # Backend Keycloak configuration (internal URL)
+      - KEYCLOAK_URL=${KEYCLOAK_URL:-http://keycloak:8080}
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER:-http://localhost:8080/realms/ldap-manager}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-ldap-manager}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-ldap-manager-client}
+
+      # Frontend Keycloak configuration (browser-accessible URL)
+      - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL:-http://localhost:8080}
+      - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM:-ldap-manager}
+      - VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID:-ldap-manager-client}
+
+      # CORS Configuration
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - JSON_LOGS=${JSON_LOGS:-true}
+
+      # Rate Limiting
+      - REDIS_URL=${REDIS_URL:-memory://}
+
+      # UI Configuration
+      - VITE_FOOTER_TEXT=${VITE_FOOTER_TEXT:-LDAP Manager (Authenticated)}
+
+    volumes:
+      # Configuration (read-only)
+      - ./config.yml:/app/config.yml:ro
+
+      # Persistent volumes
+      - ldap-cache:/app/.cache
+      - ldap-secrets:/app/.secrets
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - ldap-network
+
+volumes:
+  keycloak-data:
+    driver: local
+  ldap-cache:
+    driver: local
+  ldap-secrets:
+    driver: local
+
+networks:
+  ldap-network:
+    driver: bridge
