@@ -1,67 +1,50 @@
-name: LDAP Manager Docker Publish
+name: Publish LDAP Manager
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
   packages: write
   id-token: write
 
-on:
-  workflow_dispatch:
-
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ldap-manager
-
 jobs:
-  build-and-push:
+  version:
+    name: Read App Version
     runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.version.outputs.app-version }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Read package.json version
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' frontend/package.json)
+          echo "app-version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "App version: ${VERSION}"
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Set lowercase organization name
-      id: lowercase
-      run: |
-        echo "org_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-    - name: Extract version from package.json
-      id: version
-      run: |
-        VERSION=$(jq -r '.version' frontend/package.json)
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "Using version: $VERSION"
-
-    - name: Extract metadata for Docker
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=raw,value=latest
-          type=raw,value=${{ steps.version.outputs.version }}
-
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: Dockerfile.prod
-        push: true
-        platforms: linux/amd64,linux/arm64
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+  publish:
+    name: Build & Push
+    needs: version
+    uses: VibhuviOiO/github-engineering/.github/workflows/container-publish.yml@main
+    with:
+      image-name: ldap-manager
+      dockerfile: Dockerfile.prod
+      platforms: linux/amd64,linux/arm64
+      ghcr-enabled: true
+      dockerhub-enabled: true
+      dockerhub-namespace: vibhuvioio
+      quay-enabled: true
+      quay-namespace: vibhuvioio
+      tags: |
+        type=raw,value=latest
+        type=raw,value=${{ needs.version.outputs.app-version }}
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}.{{minor}}
+        type=sha,prefix=
+    secrets: inherit
