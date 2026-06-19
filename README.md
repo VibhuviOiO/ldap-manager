@@ -4,25 +4,26 @@
 
 # LDAP Manager
 
+[![GitHub Stars](https://img.shields.io/github/stars/VibhuviOiO/ldap-manager?style=flat&logo=github)](https://github.com/VibhuviOiO/ldap-manager)
+[![License](https://img.shields.io/github/license/VibhuviOiO/ldap-manager?style=flat)](https://github.com/VibhuviOiO/ldap-manager/blob/main/LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/vibhuvioio/ldap-manager?style=flat&logo=docker)](https://hub.docker.com/r/vibhuvioio/ldap-manager)
+[![Build](https://img.shields.io/github/actions/workflow/status/VibhuviOiO/ldap-manager/docker-publish.yml?label=build&logo=githubactions&logoColor=white)](https://github.com/VibhuviOiO/ldap-manager/actions/workflows/docker-publish.yml)
 
-Modern web-based management interface for OpenLDAP servers with React + TypeScript frontend and FastAPI Python backend.
+Modern web-based management interface for OpenLDAP servers with a React + TypeScript frontend and FastAPI Python backend.
 
-![License](https://img.shields.io/badge/license-MIT-green)
-![Docker](https://img.shields.io/badge/docker-ready-blue)
+📖 **[Full Documentation](https://vibhuvioio.com/ldap-manager/)**
 
 ![LDAP Manager Dashboard](https://vibhuvioio.com/ldap-manager/img/1ldap-cluster-home.png)
 ![Directory data](https://vibhuvioio.com/ldap-manager/img/3ldap-users.png)
 
 ## Features
 
-- **Multi-cluster Management** - Manage multiple LDAP servers from single interface
+- **Multi-cluster Management** - Manage multiple LDAP servers from a single interface
 - **Server-side Pagination & Search** - Efficient handling of large directories (LDAP RFC 2696)
-- **Password Caching** - Secure SHA256-hashed password storage for shared access
+- **Secure Password Caching** - Passwords are encrypted with Fernet symmetric encryption and expire automatically
 - **Custom Schema Support** - Automatically detects and displays custom objectClasses
 - **Health Monitoring** - Real-time cluster health status
 - **Modern UI** - React 18 + TypeScript + shadcn/ui components
-
-See [Full Documentation](https://vibhuvioio.com/ldap-manager/) for advanced configuration (custom forms, table columns, user creation).
 
 ## Quick Start
 
@@ -37,39 +38,39 @@ See [Full Documentation](https://vibhuvioio.com/ldap-manager/) for advanced conf
 ### Docker Run (Fastest)
 
 ```bash
-# Download config template
+# Download the config template
 wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/config.example.yml -O config.yml
 
 # Edit config with your LDAP details
 nano config.yml
 
-# Run container
+# Run the Docker Hub image
 docker run -d \
   --name ldap-manager \
   -p 8000:8000 \
   -v $(pwd)/config.yml:/app/config.yml:ro \
-  ghcr.io/vibhuvioio/ldap-manager:latest
+  vibhuvioio/ldap-manager:latest
 
-# Access UI at http://localhost:8000
+# Access the UI at http://localhost:8000
 ```
 
 ### Docker Compose (Recommended)
 
 ```bash
-# Download docker-compose.prod.yml
+# Download the production compose file and config template
 wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/docker-compose.prod.yml
-
-# Download config template
 wget https://raw.githubusercontent.com/VibhuviOiO/ldap-manager/main/config.example.yml -O config.yml
 
 # Edit config with your LDAP details
 nano config.yml
 
-# Start application
-docker-compose -f docker-compose.prod.yml up -d
+# Start the application
+docker compose -f docker-compose.prod.yml up -d
 
-# Access UI at http://localhost:8000
+# Access the UI at http://localhost:8000
 ```
+
+> **Registry note:** The primary image is hosted on Docker Hub at `vibhuvioio/ldap-manager`. The same image is also available on GHCR at `ghcr.io/vibhuvioio/ldap-manager` if you prefer GitHub's registry.
 
 ## Configuration
 
@@ -100,10 +101,10 @@ clusters:
 
 ```bash
 # Production
-CONTEXT_PATH=/ldap-manager docker-compose -f docker-compose.prod.yml up -d
+CONTEXT_PATH=/ldap-manager docker compose -f docker-compose.prod.yml up -d
 
 # Development
-CONTEXT_PATH=/ldap-manager docker-compose up
+CONTEXT_PATH=/ldap-manager docker compose up
 ```
 
 ## Documentation
@@ -137,23 +138,31 @@ npm run dev
 
 ## Testing
 
+The project uses two automated test suites:
+
+- **Backend:** pytest unit and integration tests in `backend/tests/`
+- **Frontend E2E:** Playwright tests in `frontend/tests/e2e/`
+
+Both suites run in GitHub Actions on every push. Run them locally:
+
 ```bash
+# Backend tests
+cd backend
+pytest
+
+# Frontend E2E tests
 cd frontend
 npm install
 npx playwright install
 npx playwright test
 ```
 
-✅ 95 tests across 3 browsers covering dashboard, user lifecycle, forms, and accessibility.
-
-See [docs/testing.html](https://vibhuvioio.com/ldap-manager/testing.html) for detailed testing guide.
-
 ## Security
 
-- Passwords cached using SHA256 hashing
-- Cache files stored in `/app/.cache/` (container only)
+- Passwords cached with **Fernet symmetric encryption** (AES-128-CBC with HMAC)
+- Cache files stored in `/app/.cache/` and encryption keys in `/app/.secrets/` with `0600` permissions
 - Use read-only LDAP accounts when possible
-- Enable TLS/SSL for production (ldaps://)
+- Enable TLS/SSL for production (`ldaps://`)
 
 ## Compatible LDAP Servers
 
@@ -166,10 +175,10 @@ See [docs/testing.html](https://vibhuvioio.com/ldap-manager/testing.html) for de
 ## Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit changes (`git commit -m 'Add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+5. Open a Pull Request
 
 ## License
 

@@ -64,13 +64,13 @@
             <p>Comprehensive guide to testing LDAP Manager with backend unit tests and frontend E2E tests.</p>
 
             <h2>Test Coverage Overview</h2>
-            <p>LDAP Manager has <strong>199 total tests</strong> with comprehensive coverage across backend and frontend.</p>
+            <p>LDAP Manager has automated backend and frontend test suites that run in CI on every push.</p>
 
             <h3>Test Statistics</h3>
             <ul>
-                <li><strong>Backend Tests:</strong> 104 tests (97% pass rate, >80% code coverage target)</li>
-                <li><strong>Frontend E2E Tests:</strong> 95 tests (100% pass rate)</li>
-                <li><strong>Total:</strong> 199 tests</li>
+                <li><strong>Backend Tests:</strong> pytest unit and integration tests</li>
+                <li><strong>Frontend E2E Tests:</strong> Playwright end-to-end tests across multiple browsers</li>
+                <li><strong>Coverage:</strong> Security, LDAP operations, API endpoints, UI workflows</li>
                 <li><strong>Browsers:</strong> Chrome, Firefox, Safari (E2E)</li>
                 <li><strong>Coverage:</strong> Security, LDAP operations, API endpoints, UI workflows</li>
             </ul>
@@ -95,9 +95,9 @@ pytest -v
 # View HTML coverage report
 open htmlcov/index.html</code></pre>
 
-            <h3>Backend Test Suite (104 tests)</h3>
+            <h3>Backend Test Suite</h3>
 
-            <h4>Password Cache Tests (24 tests)</h4>
+            <h4>Password Cache Tests</h4>
             <ul>
                 <li>Fernet encryption key generation and storage</li>
                 <li>Password encryption and decryption</li>
@@ -106,7 +106,7 @@ open htmlcov/index.html</code></pre>
                 <li>Multi-cluster password isolation</li>
             </ul>
 
-            <h4>Node Selector Tests (19 tests)</h4>
+            <h4>Node Selector Tests</h4>
             <ul>
                 <li>READ operations use last→second→first node order</li>
                 <li>WRITE operations always use first node</li>
@@ -115,7 +115,7 @@ open htmlcov/index.html</code></pre>
                 <li>Single-node cluster handling</li>
             </ul>
 
-            <h4>LDAP Client Tests (20 tests)</h4>
+            <h4>LDAP Client Tests</h4>
             <ul>
                 <li>Connection and authentication</li>
                 <li>Search operations with pagination</li>
@@ -124,7 +124,7 @@ open htmlcov/index.html</code></pre>
                 <li>Error handling and timeouts</li>
             </ul>
 
-            <h4>API Endpoints Tests (25 tests)</h4>
+            <h4>API Endpoints Tests</h4>
             <ul>
                 <li>LDAP injection protection</li>
                 <li>Authentication and authorization</li>

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ldap-manager:
-    image: ghcr.io/vibhuvioio/ldap-manager:latest
+    image: vibhuvioio/ldap-manager:latest
     container_name: ldap-manager
     restart: unless-stopped
 
