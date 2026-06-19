@@ -38,9 +38,7 @@ jobs:
       platforms: linux/amd64,linux/arm64
       ghcr-enabled: true
       dockerhub-enabled: true
-      dockerhub-namespace: vibhuvioio
       quay-enabled: true
-      quay-namespace: vibhuvioio
       tags: |
         type=raw,value=latest
         type=raw,value=${{ needs.version.outputs.app-version }}
