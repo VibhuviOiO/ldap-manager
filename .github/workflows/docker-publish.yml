@@ -39,6 +39,7 @@ jobs:
       ghcr-enabled: true
       dockerhub-enabled: true
       quay-enabled: true
+      quay-continue-on-error: true
       tags: |
         type=raw,value=latest
         type=raw,value=${{ needs.version.outputs.app-version }}
