@@ -30,6 +30,12 @@ dist/
 dist-ssr/
 *.local
 
+# Test artifacts
+frontend/test-results/
+frontend/playwright-report/
+backend/htmlcov/
+backend/coverage.xml
+
 # IDEs
 .vscode/
 .idea/
