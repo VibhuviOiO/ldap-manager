@@ -7,7 +7,7 @@ pytest-asyncio>=0.21.0     # Async test support
 pytest-mock>=3.12.0        # Mocking utilities
 
 # FastAPI testing
-httpx>=0.24.0              # AsyncClient for FastAPI
+httpx>=0.24.0,<0.28.0      # AsyncClient for FastAPI (TestClient compatibility)
 
 # Time mocking
 freezegun>=1.2.0           # Freeze time for TTL tests

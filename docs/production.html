@@ -129,7 +129,7 @@ WORKERS=4</code></pre>
 
 services:
   ldap-manager:
-    image: ghcr.io/vibhuvioio/ldap-manager:latest
+    image: vibhuvioio/ldap-manager:latest
     restart: unless-stopped
 
     env_file: .env
@@ -328,7 +328,7 @@ curl http://localhost:8000/health | jq '.checks.ldap'</code></pre>
 
             <h3>Zero-Downtime Upgrade</h3>
             <pre><code># Pull latest image
-docker pull ghcr.io/vibhuvioio/ldap-manager:latest
+docker pull vibhuvioio/ldap-manager:latest
 
 # Restart with new image
 docker-compose -f docker-compose.prod.yml up -d
@@ -339,7 +339,7 @@ curl http://localhost:8000/health</code></pre>
             <h3>Rollback</h3>
             <pre><code># Use specific version
 docker-compose -f docker-compose.prod.yml down
-docker pull ghcr.io/vibhuvioio/ldap-manager:v1.0.0
+docker pull vibhuvioio/ldap-manager:v1.0.0
 docker-compose -f docker-compose.prod.yml up -d</code></pre>
 
             <h2>Production Checklist</h2>

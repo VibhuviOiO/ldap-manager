@@ -118,14 +118,14 @@
   -p 5173:5173 \
   -p 8000:8000 \
   -v ./config.yml:/app/config.yml \
-  ghcr.io/vibhuvioio/ldap-manager:latest</code></pre>
+  vibhuvioio/ldap-manager:latest</code></pre>
                 </div>
                 <div class="install-card">
                     <h3>Docker Compose</h3>
                     <pre><code>version: '3.8'
 services:
   ldap-manager:
-    image: ghcr.io/vibhuvioio/ldap-manager:latest
+    image: vibhuvioio/ldap-manager:latest
     ports:
       - "5173:5173"
       - "8000:8000"
