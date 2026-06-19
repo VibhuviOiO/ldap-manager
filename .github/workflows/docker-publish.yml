@@ -38,10 +38,8 @@ jobs:
       platforms: linux/amd64,linux/arm64
       ghcr-enabled: true
       dockerhub-enabled: true
-      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
       dockerhub-namespace: vibhuvioio
       quay-enabled: true
-      quay-username: ${{ secrets.QUAY_USERNAME }}
       quay-namespace: vibhuvioio
       tags: |
         type=raw,value=latest
