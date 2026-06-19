@@ -54,9 +54,14 @@ export default function ActivityLogView() {
             <p className="text-sm text-muted-foreground mb-2">
               For complete log management instructions, see:
             </p>
-            <code className="text-xs bg-background px-2 py-1 rounded block">
-              docs/ACTIVITY_LOGS.md
-            </code>
+            <a
+              href="https://vibhuvioio.com/ldap-manager/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline"
+            >
+              vibhuvioio.com/ldap-manager
+            </a>
           </div>
         </div>
       </CardContent>
