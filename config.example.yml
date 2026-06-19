@@ -8,7 +8,7 @@ clusters:
     readonly: false
     
     # Optional: Define user creation form (no-code form builder)
-    # See docs/USER_CREATION_FORM.md for details
+    # See https://vibhuvioio.com/ldap-manager/configuration for details
     user_creation_form:
       base_ou: "ou=People,dc=example,dc=com"
       object_classes:
@@ -102,9 +102,10 @@ clusters:
     description: "Multi-master LDAP cluster"
     readonly: false
 
-    # Optional: Customize table columns (see docs/TABLE_COLUMNS.md)
+    # Optional: Customize table columns
     # Control which columns appear in Users/Groups/OUs tables
     # Users can show/hide columns via the "Columns" button in the UI
+    # See https://vibhuvioio.com/ldap-manager/configuration
     table_columns:
       users:
         - name: uid
