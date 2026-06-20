@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="https://vibhuvioio.com/ldap-manager/img/ldap.png" alt="LDAP Manager Logo" width="120">
-</p>
-
-# LDAP Manager
+# LDAP Manager - 📖 [Docs](https://vibhuvioio.com/ldap-manager/)
 
 [![GitHub Stars](https://img.shields.io/github/stars/VibhuviOiO/ldap-manager?style=flat&logo=github)](https://github.com/VibhuviOiO/ldap-manager)
 [![License](https://img.shields.io/github/license/VibhuviOiO/ldap-manager?style=flat)](https://github.com/VibhuviOiO/ldap-manager/blob/main/LICENSE)
@@ -11,10 +7,33 @@
 
 Modern web-based management interface for OpenLDAP servers with a React + TypeScript frontend and FastAPI Python backend.
 
-📖 **[Full Documentation](https://vibhuvioio.com/ldap-manager/)**
+<table>
+  <tr>
+    <td width="50%">
+      <img src="https://vibhuvioio.com/img/ldap-manager/1ldap-cluster-home.png" alt="LDAP Manager" width="100%">
+    </td>
+    <td width="50%">
+      <img src="https://vibhuvioio.com/img/ldap-manager/ldap-monitoring-multi-node.png" alt="Directory Data" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>LDAP Manager</b></td>
+    <td align="center"><b>Directory Data</b></td>
+  </tr>
 
-![LDAP Manager Dashboard](https://vibhuvioio.com/ldap-manager/img/1ldap-cluster-home.png)
-![Directory data](https://vibhuvioio.com/ldap-manager/img/3ldap-users.png)
+  <tr>
+    <td width="50%">
+      <img src="https://vibhuvioio.com/img/ldap-manager/3ldap-users.png" alt="Users" width="100%">
+    </td>
+    <td width="50%">
+      <img src="https://vibhuvioio.com/img/ldap-manager/4ldap-groups.png" alt="Groups" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Users</b></td>
+    <td align="center"><b>Groups</b></td>
+  </tr>
+</table>
 
 ## Features
 
