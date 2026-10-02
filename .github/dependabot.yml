@@ -1,0 +1,38 @@
+version: 2
+updates:
+  # Backend runtime dependencies - this is where CVEs in FastAPI,
+  # python-multipart and cryptography surface.
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, backend]
+    groups:
+      python-minor:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, frontend]
+    groups:
+      npm-minor:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # Actions are pinned by tag; a compromised action is a supply-chain risk.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, ci]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker]
