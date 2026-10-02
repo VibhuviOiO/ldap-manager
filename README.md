@@ -403,6 +403,28 @@ cd frontend && npm run build && cp -r dist/* ../backend/app/static/
 > it. `curl -s <url>/ | grep -o 'assets/index-[^\"]*\.js'` shows which bundle is being
 > served.
 
+## Kubernetes
+
+The chart lives in its own repository so it can be versioned and published on its own:
+
+```bash
+helm repo add vibhuvioio https://VibhuviOiO.github.io/ldap-manager-helmchart
+helm repo update
+helm search repo vibhuvioio
+# https://artifacthub.io/packages/helm/ldap-manager/ldap-manager
+```
+
+There is deliberately **no copy of the chart in this repo**: two charts drift, and the one
+here had already fallen behind on a fix that keeps `helm uninstall` from deleting the
+`/app/.secrets` volume. Install from the published chart.
+
+If you need plain YAML instead of Helm, render it:
+
+```bash
+helm template ldap-manager vibhuvioio/ldap-manager -n directory > ldap-manager.yaml
+kubectl apply -f ldap-manager.yaml
+```
+
 ## Testing
 
 Two automated suites:
