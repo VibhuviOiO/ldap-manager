@@ -39,7 +39,7 @@ export default function DirectoryStats({ clusterName }: DirectoryStatsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Database className="h-5 w-5 text-primary" />
+            <Database className="h-5 w-5 text-primary-readable" />
             <span>Total Entries</span>
           </CardTitle>
         </CardHeader>
@@ -51,7 +51,7 @@ export default function DirectoryStats({ clusterName }: DirectoryStatsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Users className="h-5 w-5 text-primary" />
+            <Users className="h-5 w-5 text-primary-readable" />
             <span>Users</span>
           </CardTitle>
         </CardHeader>
@@ -63,7 +63,7 @@ export default function DirectoryStats({ clusterName }: DirectoryStatsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <FolderTree className="h-5 w-5 text-primary" />
+            <FolderTree className="h-5 w-5 text-primary-readable" />
             <span>Groups</span>
           </CardTitle>
         </CardHeader>

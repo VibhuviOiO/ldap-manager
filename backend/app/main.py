@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -7,9 +7,12 @@ import os
 import time
 import logging
 from datetime import datetime
-from app.api import connection, entries, monitoring, logs, clusters, password
+from app.api import entries, monitoring, logs, clusters, backup, ldif, schema, aci, audit, dashboard, capabilities
+from app.api import auth as auth_api
+from app.core.audit_middleware import AuditMiddleware
 from app.core.connection_pool import pool as ldap_pool
 from app.core.logging_config import setup_logging
+from app.core.rbac import require_readonly
 
 # Setup structured logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -31,6 +34,10 @@ app = FastAPI(
     version="1.0.0",
     root_path=CONTEXT_PATH
 )
+
+# Every mutating request is recorded centrally, so a new write
+# endpoint cannot be added without being audited.
+app.add_middleware(AuditMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,12 +80,32 @@ async def log_requests(request: Request, call_next):
 
     return response
 
-app.include_router(clusters.router, prefix="/api/clusters", tags=["clusters"])
-app.include_router(password.router, prefix="/api/password", tags=["password"])
-app.include_router(connection.router, prefix="/api/connection", tags=["connection"])
-app.include_router(entries.router, prefix="/api/entries", tags=["entries"])
-app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
-app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+# Auth endpoints manage their own access (status must stay public so the UI can
+# decide between nothing, a login form, and the first-run wizard).
+app.include_router(auth_api.router, prefix="/api/auth", tags=["auth"])
+
+# Everything else needs at least 'readonly'. Individual routes escalate:
+# entries writes -> readwrite, test-replication -> readwrite.
+_READ = [Depends(require_readonly)]
+app.include_router(clusters.router, prefix="/api/clusters", tags=["clusters"], dependencies=_READ)
+app.include_router(entries.router, prefix="/api/entries", tags=["entries"], dependencies=_READ)
+app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"], dependencies=_READ)
+app.include_router(logs.router, prefix="/api/logs", tags=["logs"], dependencies=_READ)
+# A full directory dump is the most sensitive read the app offers, so the route
+# itself requires admin rather than the readonly baseline.
+app.include_router(backup.router, prefix="/api/backup", tags=["backup"])
+# LDIF import: the route itself requires readwrite.
+app.include_router(ldif.router, prefix="/api/ldif", tags=["ldif"])
+# Schema browser: reads cn=config via the cluster's config credential.
+app.include_router(schema.router, prefix="/api/schema", tags=["schema"], dependencies=_READ)
+# ACI (olcAccess) editor: reads are readonly, writes require admin in-route.
+app.include_router(aci.router, prefix="/api/aci", tags=["aci"], dependencies=_READ)
+# Audit trail: admin-only inside the router (it names people).
+app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
+# Home-page rollup: one call instead of one per cluster.
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"], dependencies=_READ)
+# Optional-capability detection, so the UI can explain what a server lacks.
+app.include_router(capabilities.router, prefix="/api/capabilities", tags=["capabilities"], dependencies=_READ)
 
 # Lifecycle events
 @app.on_event("startup")
@@ -94,6 +121,27 @@ async def startup_event():
         }
     )
 
+    # mode=none + readonly is the safe default, but it is easy to mistake for a
+    # broken install: every write returns 403. Say so loudly at startup.
+    try:
+        from app.core.auth import AuthMode, load_auth_settings
+
+        settings = load_auth_settings()
+        if settings.mode is AuthMode.NONE and settings.default_role.value == "readonly":
+            logger.warning(
+                "auth.mode is 'none' with default_role 'readonly' - the app is READ-ONLY. "
+                "Set 'auth.default_role: admin' in config.yml to allow changes, or configure "
+                "'auth.mode: local|ldap' for sign-in."
+            )
+        else:
+            logger.info(
+                "Authentication mode: %s (default role: %s)",
+                settings.mode.value,
+                settings.default_role.value,
+            )
+    except Exception as exc:  # noqa: BLE001 - never block startup over logging
+        logger.warning("Could not evaluate auth settings: %s", exc)
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup resources on shutdown."""
@@ -101,20 +149,45 @@ async def shutdown_event():
     ldap_pool.clear()
 
 # Serve static files
+#
+# index.html must always be revalidated: it is the file that names the current
+# content-hashed bundle. Without Cache-Control a browser applies heuristic
+# caching to it, keeps an old copy, and the user silently runs stale JavaScript
+# (the classic "I rebuilt it but the UI did not change").
+NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+# Hashed filenames are content-addressed, so they can be cached hard.
+IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
-    app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
-    
+
+    class ImmutableStaticFiles(StaticFiles):
+        """Hashed assets are content-addressed, so let browsers keep them."""
+
+        async def get_response(self, path, scope):
+            response = await super().get_response(path, scope)
+            if response.status_code == 200:
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
+
+    app.mount(
+        "/assets",
+        ImmutableStaticFiles(directory=str(static_dir / "assets")),
+        name="assets",
+    )
+
     @app.get("/")
     async def serve_spa():
-        return FileResponse(str(static_dir / "index.html"))
-    
+        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
+
     @app.get("/{full_path:path}")
     async def serve_spa_routes(full_path: str):
         file_path = static_dir / full_path
         if file_path.exists() and file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(static_dir / "index.html"))
+            # Hashed asset -> cache hard; anything else -> revalidate.
+            headers = IMMUTABLE if full_path.startswith("assets/") else NO_CACHE
+            return FileResponse(str(file_path), headers=headers)
+        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
 else:
     @app.get("/")
     def root():
@@ -128,8 +201,8 @@ async def health_check():
     Returns 200 if healthy, 503 if unhealthy or degraded.
     """
     from app.core.config import load_config
-    from app.core.password_cache import get_password
-    from app.core.ldap_client import LDAPClient, LDAPConfig
+    from app.core.credentials import resolve_password
+    from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
     from app.core.node_selector import NodeSelector, OperationType
 
     health = {
@@ -173,7 +246,7 @@ async def health_check():
     try:
         if clusters:
             test_cluster = clusters[0]
-            password = get_password(test_cluster.name, test_cluster.bind_dn)
+            password = resolve_password(test_cluster)
             if password:
                 host, port = NodeSelector.select_node(test_cluster, OperationType.HEALTH)
                 config = LDAPConfig(
@@ -181,7 +254,8 @@ async def health_check():
                     port=port,
                     bind_dn=test_cluster.bind_dn,
                     bind_password=password,
-                    base_dn=test_cluster.base_dn or ''
+                    base_dn=test_cluster.base_dn or '',
+                    **tls_kwargs(test_cluster),
                 )
                 client = LDAPClient(config)
                 client.connect()

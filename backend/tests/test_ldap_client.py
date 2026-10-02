@@ -317,7 +317,7 @@ class TestLDAPGroupOperations:
         client = LDAPClient(ldap_config)
         client.connect()
 
-        with pytest.raises(Exception, match="Cannot remove last member"):
+        with pytest.raises(Exception, match="Cannot remove .*last member"):
             client.remove_member_from_group(
                 'cn=admins,ou=groups,dc=example,dc=com',
                 'cn=user1,ou=users,dc=example,dc=com'

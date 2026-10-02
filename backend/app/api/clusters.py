@@ -1,28 +1,22 @@
 from fastapi import APIRouter, HTTPException
+from app.core import config as config_module
 from app.core.config import load_config
-from app.core.ldap_client import LDAPClient, LDAPConfig
-from app.core.password_cache import get_password
+from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
+from app.core.credentials import describe, resolve_password
 from app.core.node_selector import NodeSelector, OperationType
-from pathlib import Path
 import ldap
 
 router = APIRouter()
 
 @router.get("/list")
 async def list_clusters():
-    config_path = Path("/app/config.yml")
-    if not config_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Configuration file not found. Please create /app/config.yml from config.example.yml"
-        )
-
+    # Clusters come from config.yml only. The app never creates or stores one.
     try:
         clusters = load_config()
         if not clusters:
             raise HTTPException(
                 status_code=404,
-                detail="No clusters configured. Please add clusters to config.yml"
+                detail=f"No clusters configured. Add them to {config_module.CONFIG_PATH}.",
             )
         return {
             "clusters": [
@@ -34,11 +28,16 @@ async def list_clusters():
                     "base_dn": c.base_dn,
                     "bind_dn": c.bind_dn,
                     "readonly": c.readonly,
-                    "description": c.description
+                    "description": c.description,
+                    # Where this cluster's bind password comes from - never the
+                    # secret itself. Lets the UI say "from env" vs "from file".
+                    "credential": describe(c),
                 }
                 for c in clusters
             ]
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -62,7 +61,8 @@ async def get_cluster(cluster_name: str):
             "base_dn": cluster_config.base_dn,
             "bind_dn": cluster_config.bind_dn,
             "readonly": cluster_config.readonly,
-            "description": cluster_config.description
+            "description": cluster_config.description,
+            "credential": describe(cluster_config),
         }
     except HTTPException:
         raise
@@ -80,11 +80,11 @@ async def check_cluster_health(cluster_name: str):
                 "message": f"Cluster '{cluster_name}' not found in configuration"
             }
         
-        password = get_password(cluster_name, cluster_config.bind_dn)
+        password = resolve_password(cluster_config)
         if not password:
             return {
                 "status": "warning",
-                "message": "Password not configured. Please enter password to connect."
+                "message": "Password not configured. Set it in config.yml (env or file)."
             }
 
         # Select node for HEALTH check
@@ -95,7 +95,8 @@ async def check_cluster_health(cluster_name: str):
             port=port,
             bind_dn=cluster_config.bind_dn,
             bind_password=password,
-            base_dn=cluster_config.base_dn or ''
+            base_dn=cluster_config.base_dn or '',
+            **tls_kwargs(cluster_config),
         )
         
         client = LDAPClient(config)

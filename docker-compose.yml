@@ -5,6 +5,13 @@ services:
     ports:
       - "8000:8000"
       - "5173:5173"
+    # Cluster bind passwords come from .env, one variable per cluster:
+    #   LDAP_MANAGER_CLUSTER_<NAME>_PASSWORD   (and LDAP_MANAGER_CONFIG_<NAME>_PASSWORD)
+    # See .env.example. Adding a cluster never requires editing this file.
+    env_file:
+      - path: .env
+        required: false
+
     environment:
       - PYTHONUNBUFFERED=1
       - CONTEXT_PATH=${CONTEXT_PATH:-}

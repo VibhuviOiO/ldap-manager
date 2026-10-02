@@ -32,9 +32,9 @@ def mock_load_config():
 
 
 @pytest.fixture
-def mock_password_cache():
-    """Mock password cache."""
-    with patch('app.api.entries.get_password') as mock:
+def mock_password():
+    """Stub the resolved bind password for a cluster."""
+    with patch('app.api.entries.resolve_password') as mock:
         mock.return_value = "cached-password"
         yield mock
 
@@ -51,7 +51,7 @@ def mock_ldap_client():
 class TestStatsEndpoint:
     """Test /api/entries/stats endpoint."""
 
-    def test_stats_success(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_stats_success(self, mock_load_config, mock_password, mock_ldap_client):
         """Test successful stats retrieval."""
         # Mock entry counts
         mock_ldap_client.get_entry_count.side_effect = [100, 50, 20, 10]  # total, users, groups, ous
@@ -65,7 +65,7 @@ class TestStatsEndpoint:
         assert data["groups"] == 20
         assert data["ous"] == 10
 
-    def test_stats_cluster_not_found(self, mock_load_config, mock_password_cache):
+    def test_stats_cluster_not_found(self, mock_load_config, mock_password):
         """Test stats with non-existent cluster."""
         mock_load_config.return_value = []
 
@@ -76,7 +76,7 @@ class TestStatsEndpoint:
 
     def test_stats_no_password(self, mock_load_config):
         """Test stats when password not cached."""
-        with patch('app.api.entries.get_password', return_value=None):
+        with patch('app.api.entries.resolve_password', return_value=None):
             response = client.get("/api/entries/stats?cluster=test-cluster")
 
         assert response.status_code == 401
@@ -86,7 +86,7 @@ class TestStatsEndpoint:
 class TestSearchEndpoint:
     """Test /api/entries/search endpoint."""
 
-    def test_search_first_page(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_search_first_page(self, mock_load_config, mock_password, mock_ldap_client):
         """Test search first page."""
         # Mock search results
         mock_ldap_client.search.return_value = (
@@ -110,7 +110,7 @@ class TestSearchEndpoint:
         assert data["page"] == 1
         assert data["has_more"] is True
 
-    def test_search_with_filter_type(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_search_with_filter_type(self, mock_load_config, mock_password, mock_ldap_client):
         """Test search with filter_type parameter."""
         mock_ldap_client.search.return_value = ([], b'', 0)
 
@@ -131,7 +131,7 @@ class TestSearchEndpoint:
         filter_str = call_args[0][1]
         assert "inetOrgPerson" in filter_str or "posixAccount" in filter_str
 
-    def test_search_with_text_search(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_search_with_text_search(self, mock_load_config, mock_password, mock_ldap_client):
         """Test search with text search parameter."""
         mock_ldap_client.search.return_value = ([], b'', 0)
 
@@ -152,7 +152,7 @@ class TestSearchEndpoint:
         filter_str = call_args[0][1]
         assert "john" in filter_str.lower() or "*(john)" in filter_str.lower()
 
-    def test_search_ldap_injection_protected(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_search_ldap_injection_protected(self, mock_load_config, mock_password, mock_ldap_client):
         """Test that search is protected against LDAP injection."""
         mock_ldap_client.search.return_value = ([], b'', 0)
 
@@ -179,7 +179,7 @@ class TestSearchEndpoint:
 class TestCreateEntryEndpoint:
     """Test /api/entries/create endpoint."""
 
-    def test_create_entry_success(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_create_entry_success(self, mock_load_config, mock_password, mock_ldap_client):
         """Test successful entry creation."""
         response = client.post(
             "/api/entries/create",
@@ -204,7 +204,7 @@ class TestCreateEntryEndpoint:
         mock_ldap_client.connect.assert_called_once()
         mock_ldap_client.add.assert_called_once()
 
-    def test_create_entry_readonly_cluster(self, mock_load_config, mock_password_cache):
+    def test_create_entry_readonly_cluster(self, mock_load_config, mock_password):
         """Test creating entry on readonly cluster."""
         # Make cluster readonly
         mock_load_config.return_value[0].readonly = True
@@ -223,7 +223,7 @@ class TestCreateEntryEndpoint:
 
     def test_create_entry_no_password(self, mock_load_config):
         """Test creating entry when password not cached."""
-        with patch('app.api.entries.get_password', return_value=None):
+        with patch('app.api.entries.resolve_password', return_value=None):
             response = client.post(
                 "/api/entries/create",
                 json={
@@ -239,7 +239,7 @@ class TestCreateEntryEndpoint:
 class TestUpdateEntryEndpoint:
     """Test /api/entries/update endpoint."""
 
-    def test_update_entry_success(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_update_entry_success(self, mock_load_config, mock_password, mock_ldap_client):
         """Test successful entry update."""
         response = client.put(
             "/api/entries/update",
@@ -260,7 +260,7 @@ class TestUpdateEntryEndpoint:
         # Verify modify was called
         mock_ldap_client.modify.assert_called_once()
 
-    def test_update_entry_readonly_cluster(self, mock_load_config, mock_password_cache):
+    def test_update_entry_readonly_cluster(self, mock_load_config, mock_password):
         """Test updating entry on readonly cluster."""
         mock_load_config.return_value[0].readonly = True
 
@@ -276,7 +276,7 @@ class TestUpdateEntryEndpoint:
         assert response.status_code == 403
 
     def test_update_password_updates_shadow_last_change(
-        self, mock_load_config, mock_password_cache, mock_ldap_client
+        self, mock_load_config, mock_password, mock_ldap_client
     ):
         """Test that updating password also updates shadowLastChange."""
         # Mock user has shadowAccount objectClass
@@ -308,7 +308,7 @@ class TestUpdateEntryEndpoint:
 class TestDeleteEntryEndpoint:
     """Test /api/entries/delete endpoint."""
 
-    def test_delete_entry_success(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_delete_entry_success(self, mock_load_config, mock_password, mock_ldap_client):
         """Test successful entry deletion."""
         response = client.delete(
             "/api/entries/delete",
@@ -325,7 +325,7 @@ class TestDeleteEntryEndpoint:
         # Verify delete was called
         mock_ldap_client.delete.assert_called_once_with("cn=user1,dc=example,dc=com")
 
-    def test_delete_entry_readonly_cluster(self, mock_load_config, mock_password_cache):
+    def test_delete_entry_readonly_cluster(self, mock_load_config, mock_password):
         """Test deleting entry on readonly cluster."""
         mock_load_config.return_value[0].readonly = True
 
@@ -343,16 +343,14 @@ class TestDeleteEntryEndpoint:
 class TestGroupMembershipEndpoints:
     """Test group membership endpoints."""
 
-    def test_get_all_groups(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_get_all_groups(self, mock_load_config, mock_password, mock_ldap_client):
         """Test getting all groups."""
-        mock_ldap_client.search.return_value = (
-            [
-                {"dn": "cn=admins,ou=groups,dc=example,dc=com", "attributes": {"cn": "admins"}},
-                {"dn": "cn=users,ou=groups,dc=example,dc=com", "attributes": {"cn": "users"}},
-            ],
-            b'',
-            2
-        )
+        # The endpoint delegates to LDAPClient.get_all_groups(), so that is the
+        # method to stub - mocking search() never reaches it.
+        mock_ldap_client.get_all_groups.return_value = [
+            {"dn": "cn=admins,ou=groups,dc=example,dc=com", "cn": ["admins"]},
+            {"dn": "cn=users,ou=groups,dc=example,dc=com", "cn": ["users"]},
+        ]
 
         response = client.get(
             "/api/entries/groups/all",
@@ -363,21 +361,15 @@ class TestGroupMembershipEndpoints:
         data = response.json()
         assert len(data["groups"]) == 2
 
-    def test_get_user_groups(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_get_user_groups(self, mock_load_config, mock_password, mock_ldap_client):
         """Test getting groups for specific user."""
-        mock_ldap_client.search.return_value = (
-            [
-                {
-                    "dn": "cn=admins,ou=groups,dc=example,dc=com",
-                    "attributes": {
-                        "cn": "admins",
-                        "uniqueMember": ["cn=user1,ou=users,dc=example,dc=com"]
-                    }
-                },
-            ],
-            b'',
-            1
-        )
+        mock_ldap_client.get_user_groups.return_value = [
+            {
+                "dn": "cn=admins,ou=groups,dc=example,dc=com",
+                "cn": ["admins"],
+                "uniqueMember": ["cn=user1,ou=users,dc=example,dc=com"],
+            },
+        ]
 
         response = client.get(
             "/api/entries/user/groups",
@@ -391,23 +383,16 @@ class TestGroupMembershipEndpoints:
         data = response.json()
         assert len(data["groups"]) == 1
 
-    def test_update_user_groups(self, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_update_user_groups(self, mock_load_config, mock_password, mock_ldap_client):
         """Test updating user's group memberships."""
         response = client.put(
             "/api/entries/user/groups",
             json={
                 "cluster_name": "test-cluster",
                 "user_dn": "cn=user1,ou=users,dc=example,dc=com",
-                "group_operations": [
-                    {
-                        "group_dn": "cn=admins,ou=groups,dc=example,dc=com",
-                        "action": "add"
-                    },
-                    {
-                        "group_dn": "cn=users,ou=groups,dc=example,dc=com",
-                        "action": "remove"
-                    }
-                ]
+                # matches the request model and what the UI sends
+                "groups_to_add": ["cn=admins,ou=groups,dc=example,dc=com"],
+                "groups_to_remove": ["cn=users,ou=groups,dc=example,dc=com"]
             }
         )
 
@@ -424,7 +409,7 @@ class TestNodeSelection:
     """Test that endpoints use correct node selection strategy."""
 
     @patch('app.api.entries.NodeSelector')
-    def test_stats_uses_read_operation(self, mock_node_selector, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_stats_uses_read_operation(self, mock_node_selector, mock_load_config, mock_password, mock_ldap_client):
         """Test that stats endpoint uses READ operation type."""
         from app.core.node_selector import OperationType
 
@@ -439,7 +424,7 @@ class TestNodeSelection:
         assert call_args[0][1] == OperationType.READ
 
     @patch('app.api.entries.NodeSelector')
-    def test_create_uses_write_operation(self, mock_node_selector, mock_load_config, mock_password_cache, mock_ldap_client):
+    def test_create_uses_write_operation(self, mock_node_selector, mock_load_config, mock_password, mock_ldap_client):
         """Test that create endpoint uses WRITE operation type."""
         from app.core.node_selector import OperationType
 

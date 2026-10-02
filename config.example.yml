@@ -1,3 +1,64 @@
+# ---------------------------------------------------------------------------
+# Authentication (optional)
+# ---------------------------------------------------------------------------
+# Choose how people sign in to LDAP Manager itself. Three modes:
+#
+#   none   No login. Use this when nginx / oauth2-proxy / your SSO already
+#          authenticates users before they reach the app. Visitors get
+#          `default_role` below, which is READONLY unless you change it, so a
+#          direct hit on the app cannot modify anything.
+#
+#   local  Built-in accounts, no external integration. On first start the UI
+#          shows a one-time wizard to create them; passwords are hashed with
+#          scrypt and stored encrypted in the container.
+#
+#   ldap   One of the clusters below authenticates your users; every other
+#          cluster stays a cluster to manage. Users sign in with their own
+#          directory password, so no cluster-wide bind secret is needed to log
+#          in, and their role comes from group membership.
+#
+# If you omit this whole block the app runs in `none` mode with the `readonly`
+# default role, i.e. view-only.
+auth:
+  mode: none                 # none | local | ldap
+
+  # Role for a visitor who is not signed in. Only meaningful for mode: none.
+  # Set to "admin" when you trust your reverse proxy and want full access.
+  default_role: readonly     # readonly | readwrite | admin
+
+  session:
+    lifetime_hours: 12       # how long a sign-in lasts
+
+  # ---- only used when mode: ldap --------------------------------------------
+  # Uncomment this block and set mode: ldap above, so one of your clusters
+  # authenticates users while the rest stay clusters to manage.
+  #
+  # ldap:
+  #   cluster: "example-cluster"        # which cluster authenticates
+  #
+  #   # Option A: build the user's DN from the username
+  #   user_dn_template: "uid={username},ou=People,dc=example,dc=com"
+  #
+  #   # Where to search for group membership. Defaults to the cluster's base_dn.
+  #   user_base_dn: "dc=example,dc=com"
+  #
+  #   # NOTE: authentication binds as the user's own DN, built only from
+  #   # user_dn_template (or `uid=<username>,<user_base_dn>` when it is unset).
+  #   # `user_filter` is accepted in the schema but is NOT used by the login
+  #   # path, so a config relying on it will silently fall back to the uid= form.
+  #
+  #   role_map:
+  #     # Role for anyone whose groups match nothing below.
+  #     default: readonly
+  #     # LDAP group DN -> role. member, uniqueMember and memberUid are all
+  #     # supported, so groupOfNames, groupOfUniqueNames and posixGroup work.
+  #     groups:
+  #       "cn=ldap-admins,ou=Group,dc=example,dc=com": admin
+  #       "cn=ldap-ops,ou=Group,dc=example,dc=com": readwrite
+
+# ---------------------------------------------------------------------------
+# Clusters
+# ---------------------------------------------------------------------------
 clusters:
   - name: "example-cluster"
     host: "ldap.example.com"
@@ -6,7 +67,52 @@ clusters:
     base_dn: "dc=example,dc=com"
     description: "Example LDAP cluster"
     readonly: false
-    
+
+    # How the bind password for THIS cluster is supplied. Your choice per cluster.
+    # LDAP Manager never stores a password: it reads the secret from one of these
+    # sources, and there is no UI or API that writes one.
+    #
+    #   env     Read from an environment variable, so the secret never touches
+    #           disk. Defaults to LDAP_MANAGER_CLUSTER_<NAME>_PASSWORD.
+    #   file    Read from a mounted secret file - a Docker/Kubernetes secret.
+    #   config  Plaintext `bind_password` right here. Fine for a lab; the app
+    #           logs a warning because the secret sits in the config file.
+    #
+    # Omit this block entirely and the cluster uses `env`.
+    credential:
+      source: env
+      env: LDAP_MANAGER_CLUSTER_EXAMPLE_PASSWORD   # only for source: env
+      # file: /run/secrets/example-cluster         # only for source: file
+      # bind_password: "change-me"                 # only for source: config
+
+    # Optional: TLS for this cluster's connections.
+    #   none      (default) plain ldap://
+    #   ldaps     TLS from the first byte (ldaps://). With no explicit port, a
+    #             configured port of 389 is raised to 636.
+    #   starttls  connect on ldap:// then upgrade with StartTLS.
+    #
+    # ca_file/cert_file/key_file are paths INSIDE the ldap-manager container, so
+    # mount the certificates there (e.g. -v ./certs:/certs:ro).
+    #
+    # verify: true (default) checks the server certificate against ca_file.
+    #         false accepts any certificate - lab use only.
+    #
+    # Omit this block entirely and the cluster uses plaintext.
+    # tls:
+    #   mode: ldaps
+    #   ca_file: /certs/ca.crt
+    #   verify: true
+    #   # cert_file: /certs/client.crt   # mutual TLS
+    #   # key_file: /certs/client.key
+
+    # Optional: cn=config connection, needed by the Schema and ACI editors.
+    # The data bind DN usually cannot read cn=config, so give the config admin
+    # its own DN and credential.
+    # config:
+    #   bind_dn: "cn=config"
+    #   credential:
+    #     source: env   # LDAP_MANAGER_CONFIG_EXAMPLE_PASSWORD
+
     # Optional: Define user creation form (no-code form builder)
     # See https://vibhuvioio.com/ldap-manager/configuration for details
     user_creation_form:
@@ -101,6 +207,11 @@ clusters:
     base_dn: "dc=example,dc=com"
     description: "Multi-master LDAP cluster"
     readonly: false
+
+    # Same env-sourced secret every node shares.
+    credential:
+      source: env
+      env: LDAP_MANAGER_CLUSTER_MULTI_MASTER_PASSWORD
 
     # Optional: Customize table columns
     # Control which columns appear in Users/Groups/OUs tables

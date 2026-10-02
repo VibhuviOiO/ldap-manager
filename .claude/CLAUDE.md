@@ -43,7 +43,7 @@ Browser (Port 5173) → React UI → Vite Dev Server
 - **python-ldap 3.4.4** - LDAP v3 client
 - **PyYAML** - Configuration parsing
 - **Pydantic** - Data validation and settings
-- **cryptography** - Fernet encryption for passwords
+- **cryptography** - Fernet encryption for the built-in local user store
 - **Uvicorn** - ASGI server (4 workers in production)
 
 ### Testing
@@ -62,10 +62,9 @@ Browser (Port 5173) → React UI → Vite Dev Server
 ## V1 Production Features (COMPLETED)
 
 ### 🔒 Security (Phase 1)
-- ✅ **Fernet Symmetric Encryption** for password storage (AES-128-CBC + HMAC)
-  - Keys stored in `/app/.secrets/` with 0600 permissions
-  - 1-hour TTL (configurable)
-  - Automatic expiration and cleanup
+- ✅ **Fernet Symmetric Encryption** for the built-in local user store (AES-128-CBC + HMAC)
+  - Key stored in `/app/.secrets/` with 0600 permissions
+  - Cluster bind passwords are never stored: they come from config.yml (`env`/`file`/`config`)
 - ✅ **LDAP Injection Protection** - All input escaped with `ldap.filter.escape_filter_chars()`
 - ✅ **CORS Security** - Environment-based origin whitelist (`ALLOWED_ORIGINS`)
 - ✅ **Non-root Container** - Runs as `ldapmanager:1000` user
@@ -91,7 +90,7 @@ Browser (Port 5173) → React UI → Vite Dev Server
 
 ### 🧪 Quality Assurance (Phase 3)
 - ✅ **Backend Tests:** 104 tests (97% pass rate)
-  - 24 tests: Password encryption and cache security
+  - 24 tests: Credential source resolution (env/file/config)
   - 19 tests: Load balancing and failover
   - 20 tests: LDAP client operations
   - 25 tests: API endpoints and security
@@ -126,19 +125,18 @@ Browser (Port 5173) → React UI → Vite Dev Server
 backend/app/
 ├── main.py                         # FastAPI app, logging, CORS, health check
 ├── core/
-│   ├── config.py                   # YAML loader with Pydantic validation
+│   ├── config.py                   # YAML loader (config.yml is the only source)
 │   ├── ldap_client.py              # LDAP operations with timeouts
-│   ├── password_cache.py           # Fernet encryption, TTL expiration
-│   ├── node_selector.py            # Load balancing & failover (NEW)
-│   ├── connection_pool.py          # Connection pooling with TTL (NEW)
-│   ├── logging_config.py           # Structured JSON logging (NEW)
-│   └── config_validator.py         # Pydantic validation (NEW)
+│   ├── credentials.py              # env/file/config credential resolution
+│   ├── secrets.py                  # Local-user store + session signing
+│   ├── node_selector.py            # Load balancing & failover
+│   ├── connection_pool.py          # Connection pooling with TTL
+│   ├── logging_config.py           # Structured JSON logging
+│   └── config_validator.py         # Pydantic validation
 └── api/
-    ├── clusters.py                 # Cluster management endpoints
+    ├── clusters.py                 # Cluster read endpoints
     ├── entries.py                  # CRUD + search with injection protection
-    ├── connection.py               # Password caching with encryption
     ├── monitoring.py               # Multi-master monitoring
-    ├── password.py                 # Cache status endpoints
     └── logs.py                     # Activity logs
 ```
 
@@ -146,11 +144,11 @@ backend/app/
 ```
 backend/tests/
 ├── conftest.py                     # Shared fixtures
-├── test_password_cache.py          # 24 tests: Encryption, TTL, security
-├── test_node_selector.py           # 19 tests: Load balancing, failover
-├── test_ldap_client.py             # 20 tests: LDAP operations
-├── test_api_entries.py             # 25 tests: API, security, injection
-├── test_connection_pool.py         # 15 tests: Pooling, TTL
+├── test_credentials.py             # Credential source resolution (env/file/config)
+├── test_node_selector.py           # Load balancing, failover
+├── test_ldap_client.py             # LDAP operations
+├── test_api_entries.py             # API, security, injection
+├── test_connection_pool.py         # Pooling, TTL
 └── test_config_validator.py        # Configuration validation
 ```
 
@@ -159,7 +157,7 @@ backend/tests/
 frontend/src/
 ├── App.tsx                         # Router, theme, error boundary
 ├── components/
-│   ├── Dashboard.tsx               # Cluster cards with password status
+│   ├── Dashboard.tsx               # Overview + HomeKpis
 │   ├── ClusterDetails.tsx          # Directory, Users, Groups, OUs, Monitoring
 │   ├── DirectoryTable.tsx          # Paginated entry display
 │   ├── MonitoringView.tsx          # Node health, sync status
@@ -168,9 +166,9 @@ frontend/src/
 ├── services/api/                   # Type-safe API clients
 │   ├── ClusterService.ts
 │   ├── EntryService.ts
-│   ├── ConnectionService.ts
-│   ├── PasswordService.ts
-│   └── MonitoringService.ts
+│   ├── AuthService.ts
+│   ├── LdifService.ts
+│   └── AuditService.ts
 ├── hooks/                          # React Query hooks
 │   └── useClusterInfo.ts
 └── types/                          # TypeScript interfaces
@@ -264,9 +262,6 @@ clusters:
 | `/health` | GET | Health check (config, pool, LDAP) | N/A |
 | `/api/clusters/list` | GET | List all configured clusters | N/A |
 | `/api/clusters/health/{name}` | GET | Check cluster health | HEALTH |
-| `/api/connection/connect` | POST | Authenticate + cache encrypted password | HEALTH |
-| `/api/password/check/{cluster}` | GET | Check password cache status | N/A |
-| `/api/password/cache/{cluster}` | DELETE | Clear cached password | N/A |
 | `/api/entries/stats` | GET | Directory statistics (user/group/OU counts) | READ |
 | `/api/entries/search` | GET | Paginated search (RFC 2696) | READ |
 | `/api/entries/create` | POST | Create new LDAP entry | WRITE |
@@ -350,7 +345,7 @@ open http://localhost:5173
 cd backend
 pip install -r requirements-test.txt
 pytest --cov=app --cov-report=html --cov-report=term-missing
-pytest tests/test_password_cache.py -v
+pytest tests/test_credentials.py -v
 pytest tests/test_node_selector.py -v
 
 # View coverage report
@@ -407,7 +402,7 @@ See `PlanV2.md` for comprehensive V2 plan including:
 1. `config.yml` - Current cluster configuration (4 clusters)
 2. `PRODUCTION_READY.md` - Complete V1 implementation documentation
 3. `PlanV2.md` - V2 strategic roadmap
-4. `backend/app/core/password_cache.py` - Fernet encryption implementation
+4. `backend/app/core/credentials.py` - env/file/config credential resolution
 5. `backend/app/core/node_selector.py` - Load balancing logic
 
 ### Documentation

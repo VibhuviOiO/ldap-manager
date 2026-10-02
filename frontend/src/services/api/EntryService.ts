@@ -1,5 +1,5 @@
 import { IHttpClient } from '../interfaces/IHttpClient'
-import { SearchParams, SearchResult, LDAPEntry, GroupInfo, UpdateGroupMembershipResponse } from '../models'
+import { SearchParams, SearchResult, LDAPEntry, GroupInfo, UpdateGroupMembershipResponse, DITChild, DITChildren } from '../models'
 
 interface CreateEntryRequest {
   cluster_name: string
@@ -23,6 +23,45 @@ export class EntryService {
 
   async searchEntries(params: SearchParams): Promise<SearchResult> {
     return this.httpClient.get<SearchResult>('/api/entries/search', params)
+  }
+
+  /** One level of the DIT, for the tree browser. */
+  async getChildren(clusterName: string, baseDn?: string): Promise<DITChildren> {
+    return this.httpClient.get<DITChildren>('/api/entries/children', {
+      cluster: clusterName,
+      ...(baseDn ? { base_dn: baseDn } : {}),
+    })
+  }
+
+  /** All attributes of one entry, for the tree's detail panel. */
+  async getEntry(clusterName: string, dn: string): Promise<{ dn: string; attributes: Record<string, string[] | string> }> {
+    return this.httpClient.get('/api/entries/get', { cluster: clusterName, dn })
+  }
+
+  async bulkUpdate(
+    clusterName: string,
+    dns: string[],
+    modifications: Record<string, string | number | boolean>
+  ): Promise<{ status: string; succeeded: string[]; errors: Array<{ dn: string; error: string }> }> {
+    return this.httpClient.post('/api/entries/bulk/update', { cluster_name: clusterName, dns, modifications })
+  }
+
+  async bulkGroup(
+    clusterName: string,
+    dns: string[],
+    groupDn: string,
+    action: 'add' | 'remove'
+  ): Promise<{ status: string; succeeded: string[]; errors: Array<{ dn: string; error: string }> }> {
+    return this.httpClient.post('/api/entries/bulk/group', {
+      cluster_name: clusterName,
+      dns,
+      group_dn: groupDn,
+      action,
+    })
+  }
+
+  async bulkDelete(clusterName: string, dns: string[]): Promise<{ status: string; succeeded: string[]; errors: Array<{ dn: string; error: string }> }> {
+    return this.httpClient.post('/api/entries/bulk/delete', { cluster_name: clusterName, dns })
   }
 
   async createEntry(clusterName: string, dn: string, attributes: Record<string, string | string[] | number | boolean>): Promise<void> {

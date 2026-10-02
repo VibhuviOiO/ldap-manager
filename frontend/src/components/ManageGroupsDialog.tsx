@@ -230,7 +230,7 @@ export default function ManageGroupsDialog({
             <div className="text-sm text-muted-foreground">
               {selectedGroupDns.size} group{selectedGroupDns.size !== 1 ? 's' : ''} selected
               {hasChanges && (
-                <span className="ml-2 text-primary">
+                <span className="ml-2 text-primary-readable">
                   (unsaved changes)
                 </span>
               )}

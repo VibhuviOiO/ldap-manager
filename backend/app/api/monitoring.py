@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
-from app.core.ldap_client import LDAPClient, LDAPConfig
+from fastapi import APIRouter, HTTPException, Query, Depends
+from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
 from app.core.config import load_config
-from app.core.password_cache import get_password
+from app.core.credentials import resolve_password
 from app.core.node_selector import NodeSelector
 import ldap
 import time
 import random
+
+from app.core.rbac import require_readwrite
 
 router = APIRouter()
 
@@ -17,7 +19,7 @@ async def get_node_sync_stats(cluster: str = Query(...)):
         if not cluster_config:
             raise HTTPException(status_code=404, detail="Cluster not found")
         
-        password = get_password(cluster, cluster_config.bind_dn)
+        password = resolve_password(cluster_config)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
@@ -32,7 +34,8 @@ async def get_node_sync_stats(cluster: str = Query(...)):
                     port=port,
                     bind_dn=cluster_config.bind_dn,
                     bind_password=password,
-                    base_dn=cluster_config.base_dn or ''
+                    base_dn=cluster_config.base_dn or '',
+                    **tls_kwargs(cluster_config),
                 )
                 
                 client = LDAPClient(config)
@@ -117,7 +120,7 @@ async def get_replication_topology(cluster: str = Query(...)):
         if not cluster_config:
             raise HTTPException(status_code=404, detail="Cluster not found")
         
-        password = get_password(cluster, cluster_config.bind_dn)
+        password = resolve_password(cluster_config)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
@@ -135,7 +138,8 @@ async def get_replication_topology(cluster: str = Query(...)):
                     port=port,
                     bind_dn="cn=config",
                     bind_password=password,
-                    base_dn=''
+                    base_dn='',
+                    **tls_kwargs(cluster_config),
                 )
                 
                 client = LDAPClient(config)
@@ -201,7 +205,7 @@ async def get_replication_topology(cluster: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/test-replication")
+@router.post("/test-replication", dependencies=[Depends(require_readwrite)])
 async def test_replication(cluster: str = Query(...)):
     """Test replication by creating entry on first node and checking other nodes"""
     try:
@@ -210,7 +214,7 @@ async def test_replication(cluster: str = Query(...)):
         if not cluster_config:
             raise HTTPException(status_code=404, detail="Cluster not found")
         
-        password = get_password(cluster, cluster_config.bind_dn)
+        password = resolve_password(cluster_config)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
@@ -230,7 +234,8 @@ async def test_replication(cluster: str = Query(...)):
             port=first_port,
             bind_dn=cluster_config.bind_dn,
             bind_password=password,
-            base_dn=cluster_config.base_dn or ''
+            base_dn=cluster_config.base_dn or '',
+            **tls_kwargs(cluster_config),
         )
         
         client = LDAPClient(config)
@@ -261,7 +266,8 @@ async def test_replication(cluster: str = Query(...)):
                     port=port,
                     bind_dn=cluster_config.bind_dn,
                     bind_password=password,
-                    base_dn=cluster_config.base_dn or ''
+                    base_dn=cluster_config.base_dn or '',
+                    **tls_kwargs(cluster_config),
                 )
 
                 client = LDAPClient(config)
@@ -296,7 +302,8 @@ async def test_replication(cluster: str = Query(...)):
                 port=first_port,
                 bind_dn=cluster_config.bind_dn,
                 bind_password=password,
-                base_dn=cluster_config.base_dn or ''
+                base_dn=cluster_config.base_dn or '',
+                **tls_kwargs(cluster_config),
             )
             client = LDAPClient(config)
             client.connect()

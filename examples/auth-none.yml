@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+# Mode: none - no login in the app.
+#
+# Use this when nginx / oauth2-proxy / your SSO already authenticates users
+# before they reach LDAP Manager. Because anything that reaches the app is
+# trusted, default_role is "admin" here. If you would rather it stay view-only,
+# set default_role: readonly.
+#
+# Validate:  python -m app.cli validate --config examples/auth-none.yml
+# Run:       docker run -d --name ldap-manager -p 8000:8000 \
+#              -v $PWD/examples/auth-none.yml:/app/config.yml:ro \
+#              -e LDAP_MANAGER_CLUSTER_PROD_PASSWORD=secret \
+#              vibhuvioio/ldap-manager:latest
+# ---------------------------------------------------------------------------
+auth:
+  mode: none
+  default_role: admin
+
+clusters:
+  - name: "prod"
+    host: "ldap.example.com"
+    port: 389
+    bind_dn: "cn=admin,dc=example,dc=com"
+    base_dn: "dc=example,dc=com"
+    description: "Production directory"
+    # Password comes from the environment, so it never touches disk.
+    credential:
+      source: env
+      # env: LDAP_MANAGER_CLUSTER_PROD_PASSWORD   # this is the default name

@@ -48,6 +48,12 @@ backend/coverage.xml
 backend/.cache/
 .cache/
 
+# Secrets: Fernet key, session signing key, encrypted built-in users.
+# These live at /app/.secrets in the container; when /app is bind-mounted for
+# local development or tests they appear here, and must never be committed.
+backend/.secrets/
+.secrets/
+
 # Build artifacts
 *.egg-info/
 build/
@@ -64,3 +70,6 @@ tmp/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+
+# built frontend copied here for local/dev serving
+backend/app/static/

@@ -28,7 +28,7 @@ export default function DirectoryBrowser() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Search className="h-5 w-5 text-primary" />
+            <Search className="h-5 w-5 text-primary-readable" />
             <span>Search</span>
           </CardTitle>
         </CardHeader>

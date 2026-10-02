@@ -87,7 +87,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
 
   const getSyncAgeColor = (seconds: number | null) => {
     if (seconds === null) return 'text-muted-foreground'
-    if (seconds < 60) return 'text-primary'
+    if (seconds < 60) return 'text-primary-readable'
     if (seconds < 300) return 'text-yellow-600'
     return 'text-destructive'
   }
@@ -136,7 +136,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
           <CardTitle className="text-2xl">Node Synchronization</CardTitle>
           <div className="flex items-center space-x-3">
             {inSync ? (
-              <div className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full">
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 text-primary-readable rounded-full">
                 <CheckCircle className="h-4 w-4" />
                 <span className="text-sm font-semibold">In Sync</span>
               </div>
@@ -184,7 +184,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
           </div>
         </div>
         {testResult && (
-          <div className={`mt-2 text-sm ${testResult.startsWith('✓') ? 'text-primary' : 'text-destructive'}`}>
+          <div className={`mt-2 text-sm ${testResult.startsWith('✓') ? 'text-primary-readable' : 'text-destructive'}`}>
             {testResult}
           </div>
         )}
@@ -272,14 +272,14 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
                   <td className="py-3 px-4 text-right text-muted-foreground">{node.total - node.users - node.groups - node.ous}</td>
                   <td className="py-3 px-4 text-right">
                     {node.responseTime !== null ? (
-                      <span className={node.responseTime < 100 ? 'text-primary' : node.responseTime < 500 ? 'text-yellow-600' : 'text-destructive'}>
+                      <span className={node.responseTime < 100 ? 'text-primary-readable' : node.responseTime < 500 ? 'text-yellow-600' : 'text-destructive'}>
                         {node.responseTime}ms
                       </span>
                     ) : 'N/A'}
                   </td>
                   <td className="py-3 px-4 text-center">
                     {node.status === 'healthy' ? (
-                      <span className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold">
+                      <span className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary-readable rounded-full text-xs font-semibold">
                         Healthy
                       </span>
                     ) : (

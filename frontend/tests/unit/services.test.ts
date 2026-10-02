@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ClusterService } from '@/services/api/ClusterService'
 import { EntryService } from '@/services/api/EntryService'
-import { PasswordService } from '@/services/api/PasswordService'
-import { ConnectionService } from '@/services/api/ConnectionService'
 import { IHttpClient } from '@/services/interfaces/IHttpClient'
 
 describe('ClusterService', () => {
@@ -122,64 +120,3 @@ describe('EntryService', () => {
   })
 })
 
-describe('PasswordService', () => {
-  let mockHttpClient: IHttpClient
-  let passwordService: PasswordService
-
-  beforeEach(() => {
-    mockHttpClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
-    }
-    passwordService = new PasswordService(mockHttpClient)
-  })
-
-  it('should check password cache', async () => {
-    vi.mocked(mockHttpClient.get).mockResolvedValue({ cached: true })
-
-    const result = await passwordService.checkPasswordCache('test')
-
-    expect(mockHttpClient.get).toHaveBeenCalledWith('/api/password/check/test')
-    expect(result).toEqual({ cached: true })
-  })
-
-  it('should change password', async () => {
-    vi.mocked(mockHttpClient.post).mockResolvedValue(undefined)
-
-    await passwordService.changePassword('test', 'uid=user,ou=users', 'newpass')
-
-    expect(mockHttpClient.post).toHaveBeenCalledWith('/api/password/change', {
-      cluster_name: 'test',
-      dn: 'uid=user,ou=users',
-      new_password: 'newpass'
-    })
-  })
-})
-
-describe('ConnectionService', () => {
-  let mockHttpClient: IHttpClient
-  let connectionService: ConnectionService
-
-  beforeEach(() => {
-    mockHttpClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
-    }
-    connectionService = new ConnectionService(mockHttpClient)
-  })
-
-  it('should connect to cluster', async () => {
-    vi.mocked(mockHttpClient.post).mockResolvedValue(undefined)
-
-    await connectionService.connect('test', 'password')
-
-    expect(mockHttpClient.post).toHaveBeenCalledWith('/api/connection/connect', {
-      cluster_name: 'test',
-      bind_password: 'password'
-    })
-  })
-})

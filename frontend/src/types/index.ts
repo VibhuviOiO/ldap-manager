@@ -10,6 +10,18 @@ export interface Cluster {
   user_creation_form?: UserCreationForm
   table_columns?: TableColumns
   password_policy?: PasswordPolicy
+  /** Where the bind password comes from. Never contains the secret itself. */
+  credential?: ClusterCredential
+}
+
+export type CredentialSource = 'env' | 'file' | 'config'
+
+export interface ClusterCredential {
+  source: CredentialSource
+  available: boolean
+  env_var?: string
+  file?: string
+  hint?: string
 }
 
 export interface ClusterNode {
@@ -113,4 +125,61 @@ export interface UpdateGroupMembershipResponse {
   status: 'success' | 'partial'
   user_dn: string
   errors?: string[]
+}
+
+export interface DITChild {
+  dn: string
+  rdn: string
+  object_class: string[]
+  is_user: boolean
+  is_group: boolean
+  is_ou: boolean
+}
+
+export interface DITChildren {
+  base_dn: string
+  children: DITChild[]
+}
+
+export interface SchemaDef {
+  oid: string
+  name: string
+  sup: string
+  syntax: string
+  equality: string
+  single_value: boolean
+  definition: string
+}
+
+export interface SchemaEntry {
+  dn: string
+  name: string
+  attribute_types: SchemaDef[]
+  object_classes: SchemaDef[]
+}
+
+export interface SchemaResponse {
+  cluster: string
+  schemas: SchemaEntry[]
+  counts: { schemas: number; attribute_types: number; object_classes: number }
+}
+
+export interface AciRule {
+  index: number | null
+  rule: string
+  raw: string
+}
+
+export interface AciDatabase {
+  dn: string
+  database: string
+  suffix: string
+  kind: string
+  access: AciRule[]
+}
+
+export interface AciResponse {
+  cluster: string
+  databases: AciDatabase[]
+  rule_count: number
 }

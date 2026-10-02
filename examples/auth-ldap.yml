@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# Mode: ldap - one of your clusters authenticates your users.
+#
+# Users sign in with their own directory password, so no cluster-wide bind
+# secret is needed to log in. Their role comes from LDAP group membership.
+# Every other cluster stays a cluster to manage.
+#
+# Validate:  python -m app.cli validate --config examples/auth-ldap.yml
+# Run:       docker run -d --name ldap-manager -p 8000:8000 \
+#              -v $PWD/examples/auth-ldap.yml:/app/config.yml:ro \
+#              vibhuvioio/ldap-manager:latest
+# ---------------------------------------------------------------------------
+auth:
+  mode: ldap
+  session:
+    lifetime_hours: 12
+  ldap:
+    # This cluster is the authenticator. It must be one of the clusters below.
+    cluster: "auth-directory"
+
+    # How to build the user's DN from what they typed in the username box.
+    user_dn_template: "uid={username},ou=People,dc=example,dc=com"
+
+    # Where to look for group membership. Defaults to the cluster's base_dn.
+    user_base_dn: "dc=example,dc=com"
+
+    role_map:
+      # Anyone whose groups match nothing below gets this.
+      default: readonly
+      # group DN -> role. member, uniqueMember and memberUid all work, so
+      # groupOfNames, groupOfUniqueNames and posixGroup are supported.
+      groups:
+        "cn=ldap-admins,ou=Group,dc=example,dc=com": admin
+        "cn=ldap-ops,ou=Group,dc=example,dc=com": readwrite
+
+clusters:
+  # The authenticating cluster. It is also manageable by admins.
+  - name: "auth-directory"
+    host: "ldap.example.com"
+    port: 389
+    bind_dn: "cn=admin,dc=example,dc=com"
+    base_dn: "dc=example,dc=com"
+    description: "Corporate directory - also authenticates logins"
+    credential:
+      source: env   # LDAP_MANAGER_CLUSTER_AUTH_DIRECTORY_PASSWORD
+
+  # Everything else is just managed.
+  - name: "other-directory"
+    nodes:
+      - host: "ldap-a.internal"
+        port: 389
+      - host: "ldap-b.internal"
+        port: 389
+    bind_dn: "cn=admin,dc=internal,dc=com"
+    base_dn: "dc=internal,dc=com"
+    description: "Internal 2-node cluster"
+    readonly: true
+    credential:
+      source: env   # LDAP_MANAGER_CLUSTER_OTHER_DIRECTORY_PASSWORD
+      # or read it from a mounted secret instead:
+      # source: file
+      # file: /run/secrets/other-directory

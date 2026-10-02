@@ -25,10 +25,15 @@ interface DirectoryTableProps {
   onChangePassword?: (entry: any) => void
   onManageGroups?: (entry: any) => void
   readonly?: boolean
+  /** Multi-select for bulk operations (users view, write roles). */
+  selectable?: boolean
+  selectedDns?: Set<string>
+  onToggleSelect?: (dn: string) => void
+  onSelectAll?: () => void
 }
 
 export default function DirectoryTable({
-  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, onPageSizeChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, onManageGroups, readonly
+  entries, directoryView, loading, page, pageSize, totalEntries, hasMore, onPageChange, onPageSizeChange, columns, visibleColumns, onDelete, onEdit, onChangePassword, onManageGroups, readonly, selectable, selectedDns = new Set(), onToggleSelect, onSelectAll
 }: DirectoryTableProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
@@ -138,7 +143,7 @@ export default function DirectoryTable({
         !['top', 'person', 'organizationalPerson', 'inetOrgPerson', 'posixAccount', 'shadowAccount', 'account'].includes(oc)
       )
       if (customClasses.length > 0) {
-        return <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">{customClasses[0]}</span>
+        return <span className="px-2 py-1 bg-primary/10 text-primary-readable rounded text-xs">{customClasses[0]}</span>
       }
       if (objectClasses.includes('account') && !objectClasses.includes('inetOrgPerson')) {
         return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded text-xs">Legacy Unix</span>
@@ -177,7 +182,7 @@ export default function DirectoryTable({
               e.stopPropagation()
               toggleGroupExpand(entry.dn)
             }}
-            className="inline-flex items-center space-x-1 text-primary hover:underline focus:outline-none"
+            className="inline-flex items-center space-x-1 text-primary-readable hover:underline focus:outline-none"
             title={isExpanded ? 'Click to collapse' : 'Click to view members'}
           >
             <span>{count} member{count !== 1 ? 's' : ''}</span>
@@ -221,6 +226,16 @@ export default function DirectoryTable({
             <table className="w-full">
               <thead className="sticky top-0 bg-background border-b">
                 <tr>
+              {directoryView === 'users' && selectable && (
+                <th className="p-2 w-8">
+                  <input
+                    type="checkbox"
+                    checked={entries.length > 0 && entries.every((e) => selectedDns.has(e.dn))}
+                    onChange={onSelectAll}
+                    aria-label="Select all users on this page"
+                  />
+                </th>
+              )}
               {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
                 <th key={col.name} className="text-left p-2 font-medium text-sm">{col.label}</th>
               ))}
@@ -276,6 +291,16 @@ export default function DirectoryTable({
               return (
               <Fragment key={idx}>
               <tr className="border-b hover:bg-accent">
+                {directoryView === 'users' && selectable && (
+                  <td className="p-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedDns.has(entry.dn)}
+                      onChange={() => onToggleSelect?.(entry.dn)}
+                      aria-label={`Select ${entry.dn}`}
+                    />
+                  </td>
+                )}
                 {directoryView === 'users' && columns && columns.filter(c => isColumnVisible(c.name)).map(col => (
                   <td key={col.name} className="p-2 text-sm">{renderUserCell(entry, col.name)}</td>
                 ))}
@@ -381,7 +406,7 @@ export default function DirectoryTable({
                   <>
                     <td className="p-2 text-sm font-mono">{entry.dn}</td>
                     <td className="p-2 text-sm">
-                      <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
+                      <span className="px-2 py-1 bg-primary/10 text-primary-readable rounded text-xs">
                         {entry.objectClass?.[entry.objectClass.length - 1] || 'Unknown'}
                       </span>
                     </td>

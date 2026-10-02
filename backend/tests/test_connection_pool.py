@@ -109,8 +109,11 @@ class TestConnectionPoolTTL:
             assert client1 == client2
             assert mock_client_instance.connect.call_count == 1
 
-        # Access after expiration (15 seconds later)
-        with freeze_time("2024-01-01 12:00:15"):
+        # Expiry is measured from the LAST ACCESS, not from creation: the pool
+        # refreshes the timestamp on reuse (see
+        # test_connection_timestamp_updated_on_access). So 10s of idle means
+        # 12:00:19, not 12:00:10.
+        with freeze_time("2024-01-01 12:00:20"):
             mock_client_class.return_value = MagicMock()
             client3 = pool.get_connection(ldap_config)
             # Should be new connection

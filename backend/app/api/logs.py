@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, HTTPException
 from app.core.config import load_config
-from app.core.ldap_client import LDAPClient, LDAPConfig
-from app.core.password_cache import get_password
+from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
+from app.core.credentials import resolve_password
 from app.core.node_selector import NodeSelector, OperationType
 from datetime import datetime
 
@@ -15,7 +15,7 @@ async def get_activity_logs(cluster: str = Query(...)):
         if not cluster_config:
             raise HTTPException(status_code=404, detail="Cluster not found")
         
-        password = get_password(cluster, cluster_config.bind_dn)
+        password = resolve_password(cluster_config)
         if not password:
             raise HTTPException(status_code=401, detail="Password not configured")
 
@@ -27,7 +27,8 @@ async def get_activity_logs(cluster: str = Query(...)):
             port=port,
             bind_dn=cluster_config.bind_dn,
             bind_password=password,
-            base_dn="cn=Monitor"
+            base_dn="cn=Monitor",
+            **tls_kwargs(cluster_config),
         )
         
         client = LDAPClient(config)

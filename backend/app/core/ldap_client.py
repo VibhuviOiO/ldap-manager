@@ -1,9 +1,38 @@
 import ldap
 import ldap.controls
 import ldap.filter
+import logging
+import threading
 from ldap.controls import SimplePagedResultsControl
 from typing import List, Dict, Optional, Tuple
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+# python-ldap keeps TLS settings in ONE process-global context, so two
+# connections with different CA files - or different verify settings - clobber
+# each other if they are set up concurrently. Serialising the setup and the
+# handshake is the only way to make per-cluster TLS correct.
+_TLS_LOCK = threading.Lock()
+
+
+def tls_kwargs(cluster) -> Dict:
+    """
+    TLS options for a cluster's connections, as LDAPConfig kwargs.
+
+    Returns {} when TLS is off, so call sites can splat it unconditionally.
+    """
+    mode = str(getattr(cluster, "tls_mode", "none") or "none").lower()
+    if mode not in ("ldaps", "starttls"):
+        return {}
+    return {
+        "tls_mode": mode,
+        "tls_ca_file": getattr(cluster, "tls_ca_file", None),
+        "tls_cert_file": getattr(cluster, "tls_cert_file", None),
+        "tls_key_file": getattr(cluster, "tls_key_file", None),
+        "tls_verify": bool(getattr(cluster, "tls_verify", True)),
+    }
+
 
 class LDAPConfig(BaseModel):
     host: str
@@ -12,19 +41,74 @@ class LDAPConfig(BaseModel):
     bind_password: str
     base_dn: str = ""
 
+    # TLS. mode: none | ldaps | starttls
+    tls_mode: str = "none"
+    tls_ca_file: Optional[str] = None
+    tls_cert_file: Optional[str] = None
+    tls_key_file: Optional[str] = None
+    tls_verify: bool = True
+
+
 class LDAPClient:
     def __init__(self, config: LDAPConfig):
         self.config = config
         self.conn = None
-    
+
+    def _apply_tls_options(self) -> None:
+        """
+        python-ldap keeps TLS settings in a process-global context, so they are
+        set with ldap.set_option and the context rebuilt with OPT_X_TLS_NEWCTX.
+        """
+        if self.config.tls_ca_file:
+            ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, self.config.tls_ca_file)
+        if self.config.tls_cert_file:
+            ldap.set_option(ldap.OPT_X_TLS_CERTFILE, self.config.tls_cert_file)
+        if self.config.tls_key_file:
+            ldap.set_option(ldap.OPT_X_TLS_KEYFILE, self.config.tls_key_file)
+        ldap.set_option(
+            ldap.OPT_X_TLS_REQUIRE_CERT,
+            ldap.OPT_X_TLS_DEMAND if self.config.tls_verify else ldap.OPT_X_TLS_NEVER,
+        )
+        # Must follow any option change: rebuilds the TLS context.
+        ldap.set_option(ldap.OPT_X_TLS_NEWCTX, 0)
+
     def connect(self) -> bool:
+        mode = (self.config.tls_mode or "none").lower()
+        if mode in ("ldaps", "starttls"):
+            with _TLS_LOCK:
+                return self._connect(mode)
+        return self._connect(mode)
+
+    def _connect(self, mode: str) -> bool:
         try:
-            ldap_url = f"ldap://{self.config.host}:{self.config.port}"
+            port = self.config.port
+            if mode == "ldaps" and port == 389:
+                # 389 is the plaintext default; LDAPS conventionally listens on 636.
+                logger.info(
+                    "tls.mode=ldaps with port 389 - connecting on 636 instead "
+                    "(set 'port: 636' explicitly to silence this)"
+                )
+                port = 636
+
+            if mode in ("ldaps", "starttls"):
+                try:
+                    self._apply_tls_options()
+                except Exception as exc:  # noqa: BLE001 - surface a usable message
+                    raise Exception(
+                        f"LDAP TLS setup failed (mode '{mode}': {exc}). "
+                        "Check that ca_file/cert_file/key_file exist inside the container."
+                    )
+
+            scheme = "ldaps" if mode == "ldaps" else "ldap"
+            ldap_url = f"{scheme}://{self.config.host}:{port}"
             self.conn = ldap.initialize(ldap_url)
 
             # Set network and operation timeouts (30 seconds)
             self.conn.set_option(ldap.OPT_NETWORK_TIMEOUT, 30)
             self.conn.set_option(ldap.OPT_TIMEOUT, 30)
+
+            if mode == "starttls":
+                self.conn.start_tls_s()
 
             self.conn.simple_bind_s(self.config.bind_dn, self.config.bind_password)
             
@@ -34,7 +118,15 @@ class LDAPClient:
             
             return True
         except ldap.LDAPError as e:
-            raise Exception(f"LDAP connection failed: {str(e)}")
+            # A certificate rejection surfaces as a bare connection failure, so
+            # name the TLS settings that were in play.
+            hint = ""
+            if mode in ("ldaps", "starttls"):
+                parts = [f"TLS mode '{mode}'"]
+                parts.append(f"CA {self.config.tls_ca_file}" if self.config.tls_ca_file else "no CA file")
+                parts.append("certificate verification ON" if self.config.tls_verify else "verification OFF")
+                hint = " [" + ", ".join(parts) + "]"
+            raise Exception(f"LDAP connection failed: {str(e)}{hint}")
     
     def _discover_base_dn(self) -> str:
         """Auto-discover base DN from rootDSE"""
@@ -138,6 +230,38 @@ class LDAPClient:
                     else:
                         encoded_values.append(v)
                 mod_list.append((ldap.MOD_REPLACE, k, encoded_values))
+            self.conn.modify_s(dn, mod_list)
+            return True
+        except ldap.LDAPError as e:
+            raise Exception(f"Modify failed: {str(e)}")
+
+    def modify_ops(self, dn: str, ops) -> bool:
+        """
+        Apply an ordered list of (op, attr, values) modifications, where op is
+        'add', 'replace' or 'delete'. Needed for LDIF import, where a single
+        record can carry add:/replace:/delete: directives that `modify` (which
+        is replace-only) cannot express.
+        """
+        try:
+            op_map = {
+                'add': ldap.MOD_ADD,
+                'replace': ldap.MOD_REPLACE,
+                'delete': ldap.MOD_DELETE,
+            }
+            mod_list = []
+            for op, attr, values in ops:
+                if op not in op_map:
+                    raise ValueError(f"Unknown modify operation: {op}")
+                encoded = []
+                for value in values:
+                    if isinstance(value, str):
+                        encoded.append(value.encode())
+                    elif isinstance(value, (int, float, bool)):
+                        encoded.append(str(value).encode())
+                    else:
+                        encoded.append(value)
+                # delete with no values removes the whole attribute
+                mod_list.append((op_map[op], attr, encoded if (op != 'delete' or encoded) else None))
             self.conn.modify_s(dn, mod_list)
             return True
         except ldap.LDAPError as e:

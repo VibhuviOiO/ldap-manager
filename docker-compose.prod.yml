@@ -6,6 +6,13 @@ services:
     container_name: ldap-manager
     restart: unless-stopped
 
+    # Cluster bind passwords come from .env, one variable per cluster:
+    #   LDAP_MANAGER_CLUSTER_<NAME>_PASSWORD   (and LDAP_MANAGER_CONFIG_<NAME>_PASSWORD)
+    # See .env.example. Adding a cluster never requires editing this file.
+    env_file:
+      - path: .env
+        required: false
+
     environment:
       - CONTEXT_PATH=${CONTEXT_PATH:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}

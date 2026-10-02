@@ -112,24 +112,22 @@ class TestTableColumn:
     def test_valid_table_column(self):
         """Test valid table column configuration."""
         column = TableColumn(
-            attribute="mail",
+            name="mail",
             label="Email",
-            visible=True,
-            sortable=True
+            default_visible=True
         )
 
-        assert column.attribute == "mail"
-        assert column.visible is True
+        assert column.name == "mail"
+        assert column.default_visible is True
 
     def test_table_column_defaults(self):
         """Test table column default values."""
         column = TableColumn(
-            attribute="cn",
+            name="cn",
             label="Common Name"
         )
 
-        assert column.visible is True
-        assert column.sortable is True
+        assert column.default_visible is True
 
 
 class TestClusterConfig:
@@ -234,14 +232,17 @@ class TestClusterConfig:
             name="test",
             host="ldap.example.com",
             bind_dn="cn=admin,dc=example,dc=com",
-            user_creation_form=[
-                FieldConfig(name="uid", label="User ID", type="text", required=True),
-                FieldConfig(name="mail", label="Email", type="email", required=True),
-            ]
+            user_creation_form={
+                "base_ou": "ou=People,dc=example,dc=com",
+                "fields": [
+                    {"name": "uid", "label": "User ID", "type": "text", "required": True},
+                    {"name": "mail", "label": "Email", "type": "email", "required": True},
+                ],
+            }
         )
 
-        assert len(cluster.user_creation_form) == 2
-        assert cluster.user_creation_form[0].name == "uid"
+        assert cluster.user_creation_form["base_ou"] == "ou=People,dc=example,dc=com"
+        assert len(cluster.user_creation_form["fields"]) == 2
 
     def test_cluster_with_table_columns(self):
         """Test cluster with custom table columns."""
@@ -251,8 +252,8 @@ class TestClusterConfig:
             bind_dn="cn=admin,dc=example,dc=com",
             table_columns={
                 "users": [
-                    TableColumn(attribute="uid", label="User ID"),
-                    TableColumn(attribute="mail", label="Email"),
+                    TableColumn(name="uid", label="User ID"),
+                    TableColumn(name="mail", label="Email"),
                 ]
             }
         )
@@ -269,7 +270,7 @@ class TestClusterConfig:
                 bind_dn="cn=admin,dc=example,dc=com",
                 table_columns={
                     "invalid_key": [
-                        TableColumn(attribute="cn", label="Name")
+                        TableColumn(name="cn", label="Name")
                     ]
                 }
             )
@@ -281,9 +282,9 @@ class TestClusterConfig:
             host="ldap.example.com",
             bind_dn="cn=admin,dc=example,dc=com",
             table_columns={
-                "users": [TableColumn(attribute="uid", label="UID")],
-                "groups": [TableColumn(attribute="cn", label="Name")],
-                "ous": [TableColumn(attribute="ou", label="OU")],
+                "users": [TableColumn(name="uid", label="UID")],
+                "groups": [TableColumn(name="cn", label="Name")],
+                "ous": [TableColumn(name="ou", label="OU")],
             }
         )
 
@@ -388,3 +389,22 @@ class TestValidateConfig:
 
         assert clusters[0].description == "Test LDAP Server"
         assert clusters[0].readonly is True
+
+class TestFieldConfigCheckbox:
+    """The UI renders type 'checkbox' as a boolean input (TRUE/FALSE), so the
+    validator must accept it - the custom boolean attributes rely on it."""
+
+    def test_checkbox_type_is_accepted(self):
+        field = FieldConfig(name="isWarrior", label="Warrior", type="checkbox")
+        assert field.type == "checkbox"
+
+    def test_select_options_may_be_objects(self):
+        field = FieldConfig(
+            name="role", label="Role", type="select",
+            options=[{"value": "king", "label": "King"}, "Queen"],
+        )
+        assert len(field.options) == 2
+
+    def test_unknown_type_is_still_rejected(self):
+        with pytest.raises(ValidationError):
+            FieldConfig(name="x", label="X", type="not-a-real-type")

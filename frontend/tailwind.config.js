@@ -13,6 +13,9 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          // Darker green for TEXT/glyphs on light surfaces. #29ff54 is a fill
+          // colour: as text on white it is ~1.4:1 and effectively invisible.
+          readable: "hsl(var(--primary-readable))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",

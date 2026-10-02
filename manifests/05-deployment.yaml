@@ -1,0 +1,149 @@
+# LDAP Manager.
+#
+# State that must outlive the pod lives in two claims (see 04-pvc.yaml):
+#   /app/.data     UI-owned cluster overlay
+#   /app/.secrets  Fernet key, password cache, local users, session key
+# config.yml comes from ConfigMap ldap-manager-config, mounted as a directory and
+# pointed at with LDAP_MANAGER_CONFIG. Bind passwords come from Secret
+# ldap-manager-secrets via envFrom (create it first - see 03-secret.example.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldap-manager
+  labels:
+    app.kubernetes.io/name: ldap-manager
+    app.kubernetes.io/instance: ldap-manager
+    app.kubernetes.io/component: app
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # The state volumes are ReadWriteOnce, so a surge pod would fight the old
+      # one for the same claim. Stop the old pod before starting the new one.
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ldap-manager
+      app.kubernetes.io/instance: ldap-manager
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ldap-manager
+        app.kubernetes.io/instance: ldap-manager
+        app.kubernetes.io/component: app
+    spec:
+      serviceAccountName: ldap-manager
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ldap-manager
+          image: vibhuvioio/ldap-manager:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            # Prefix the app is served under, e.g. /ldap-manager behind
+            # https://example.com/ldap-manager. Empty means "/".
+            - name: CONTEXT_PATH
+              value: ""
+            # Public origin of the UI. Empty leaves the app's own default
+            # (http://localhost:5173), which is wrong outside a lab. Never "*".
+            # - name: ALLOWED_ORIGINS
+            #   value: https://ldap-manager.example.com
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: JSON_LOGS
+              value: "true"
+            - name: LDAP_MANAGER_CONFIG
+              value: /etc/ldap-manager/config.yml
+          # Every key in the Secret becomes an environment variable, so
+          # LDAP_MANAGER_CLUSTER_<NAME>_PASSWORD reaches the cluster that asks
+          # for it by name.
+          envFrom:
+            - secretRef:
+                name: ldap-manager-secrets
+          startupProbe:
+            httpGet:
+              path: /api/auth/status
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          # /api/auth/status answers 200 whenever the process is serving.
+          # /health answers 503 when config.yml is invalid or a managed cluster
+          # is unreachable, so probing it here would take the only pod out of the
+          # Service during an LDAP outage - exactly when the UI is needed.
+          readinessProbe:
+            httpGet:
+              path: /api/auth/status
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/auth/status
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ldap-manager
+              readOnly: true
+            - name: data
+              mountPath: /app/.data
+            - name: secrets
+              mountPath: /app/.secrets
+            # /app/.cache holds the encrypted password cache. It is rebuilt on
+            # demand, so an emptyDir only costs users one re-entry per restart.
+            # Replace with a claim if you would rather keep it.
+            - name: cache
+              mountPath: /app/.cache
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: ldap-manager-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: ldap-manager-data
+        - name: secrets
+          persistentVolumeClaim:
+            claimName: ldap-manager-secrets
+        - name: cache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,39 @@
+# Writable state. Both directories hold data the app cannot rebuild, so both are
+# claims rather than emptyDirs.
+#
+# ReadWriteOnce is correct for the default single replica. To run more than one
+# replica these must be ReadWriteMany (and the app needs LDAP_MANAGER_SECRET_KEY
+# in its Secret), because each replica mounts the same claim.
+---
+# /app/.data - the audit log. No cluster definition or password is written here.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ldap-manager-data
+  labels:
+    app.kubernetes.io/name: ldap-manager
+    app.kubernetes.io/instance: ldap-manager
+    app.kubernetes.io/component: app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# /app/.secrets - local-user encryption key and session signing key. Losing this
+# invalidates built-in accounts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ldap-manager-secrets
+  labels:
+    app.kubernetes.io/name: ldap-manager
+    app.kubernetes.io/instance: ldap-manager
+    app.kubernetes.io/component: app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

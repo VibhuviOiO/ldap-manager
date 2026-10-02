@@ -9,15 +9,17 @@ tests/
 ├── __init__.py                    # Test package marker
 ├── conftest.py                    # Shared fixtures and configuration
 ├── README.md                      # This file
-├── test_password_cache.py         # Password encryption tests (24 tests)
-├── test_node_selector.py          # Load balancing tests (19 tests)
-├── test_ldap_client.py            # LDAP client tests (20 tests)
-├── test_api_entries.py            # API endpoint tests (25 tests)
-├── test_config_validator.py       # Configuration validation (25 tests)
-└── test_connection_pool.py        # Connection pooling tests (15 tests)
+├── test_credentials.py            # env/file/config credential sources
+├── test_node_selector.py          # Load balancing tests
+├── test_ldap_client.py            # LDAP client tests
+├── test_api_entries.py            # API endpoint tests
+├── test_config_validator.py       # Configuration validation
+├── test_auth.py                   # Auth modes, RBAC, local user store
+├── test_cli.py                    # `python -m app.cli validate`
+└── test_connection_pool.py        # Connection pooling tests
 ```
 
-**Total: 128+ tests**
+**Total: 280+ tests**
 
 ## Prerequisites
 
@@ -51,13 +53,13 @@ open htmlcov/index.html
 ### Run specific test file
 
 ```bash
-pytest tests/test_password_cache.py
+pytest tests/test_credentials.py
 ```
 
 ### Run specific test
 
 ```bash
-pytest tests/test_password_cache.py::TestPasswordEncryption::test_encryption_key_generation
+pytest tests/test_credentials.py::test_env_source
 ```
 
 ### Run tests by marker
@@ -89,7 +91,7 @@ pytest -s
 
 ### Unit Tests (Fast)
 
-- **test_password_cache.py**: Encryption, TTL, cache operations
+- **test_credentials.py**: env/file/config credential resolution
 - **test_node_selector.py**: Node selection logic, failover
 - **test_config_validator.py**: Pydantic validation
 - **test_connection_pool.py**: Connection pooling, TTL
@@ -113,7 +115,7 @@ Current coverage areas:
 
 | Module | Focus |
 |--------|-------|
-| `password_cache.py` | Encryption, TTL, security |
+| `credentials.py` | env/file/config resolution |
 | `node_selector.py` | Load balancing, failover |
 | `ldap_client.py` | LDAP operations, error handling |
 | `connection_pool.py` | Pooling, TTL, cleanup |

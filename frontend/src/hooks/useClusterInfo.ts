@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { clusterService, passwordService, connectionService, entryService } from '@/services'
+import { clusterService, entryService } from '@/services'
 import { SearchParams } from '@/services/models'
 
 export const useClusterInfo = (clusterName: string) => {
@@ -33,25 +33,6 @@ export const useClusters = () => {
   return useQuery({
     queryKey: ['clusters'],
     queryFn: () => clusterService.getClusters(),
-  })
-}
-
-export const usePasswordCache = (clusterName: string) => {
-  return useQuery({
-    queryKey: ['passwordCache', clusterName],
-    queryFn: () => passwordService.checkPasswordCache(clusterName),
-    enabled: !!clusterName,
-  })
-}
-
-export const useConnect = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ clusterName, password }: { clusterName: string; password: string }) =>
-      connectionService.connect(clusterName, password),
-    onSuccess: (_, { clusterName }) => {
-      queryClient.invalidateQueries({ queryKey: ['passwordCache', clusterName] })
-    },
   })
 }
 
