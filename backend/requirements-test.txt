@@ -13,4 +13,4 @@ httpx>=0.24.0,<0.28.0      # AsyncClient for FastAPI (TestClient compatibility)
 freezegun>=1.2.0           # Freeze time for TTL tests
 
 # Additional utilities
-faker>=20.0.0              # Generate fake data
+faker>=40.40.0              # Generate fake data
