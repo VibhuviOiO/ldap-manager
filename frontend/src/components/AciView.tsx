@@ -238,8 +238,7 @@ export default function AciView({ clusterName }: AciViewProps) {
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" aria-hidden="true" />
           <p className="text-muted-foreground">
-            These rules decide who can read and write your directory. A wrong rule can lock users - or
-            you - out. Add rules rather than deleting the permissive ones until you have verified access.
+            A wrong rule can lock users out. Add rules; don't delete the permissive ones until yours work.
           </p>
         </div>
       )}

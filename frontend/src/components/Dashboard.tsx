@@ -21,11 +21,7 @@ function Dashboard() {
         <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/40 rounded-lg px-4 py-3">
           <FileCog className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
           <p>
-            Clusters come from <span className="font-medium text-foreground">config.yml</span>. Edit
-            that file to add, change or remove one — it takes effect immediately, no restart. Bind
-            passwords are supplied by each cluster's <code className="font-mono">credential</code>{' '}
-            block (<code className="font-mono">env</code> or{' '}
-            <code className="font-mono">file</code>), never stored by this app.
+            Clusters come from <span className="font-medium text-foreground">config.yml</span> — changes apply immediately, passwords are never stored here.
           </p>
         </div>
       )}

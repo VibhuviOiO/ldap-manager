@@ -7,6 +7,8 @@
 
 Modern web-based management interface for OpenLDAP servers with a React + TypeScript frontend and FastAPI Python backend.
 
+![LDAP Manager UI tour](https://vibhuvioio.com/img/ldap-manager/ldap-manager-ui.gif)
+
 <table>
   <tr>
     <td width="50%">

@@ -152,7 +152,7 @@ export default function ActivityLogView({ clusterName = '' }: { clusterName?: st
       {(data?.entries.length ?? 0) === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No activity recorded yet. Create, edit or delete an entry and it will appear here.
+            No activity yet. Create, edit or delete an entry.
           </CardContent>
         </Card>
       )}

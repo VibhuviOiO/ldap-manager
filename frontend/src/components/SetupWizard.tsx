@@ -109,8 +109,7 @@ export default function SetupWizard() {
           <img src={logo} alt="" className="h-12" aria-hidden="true" />
           <CardTitle className="text-2xl">Create your accounts</CardTitle>
           <p className="text-sm text-muted-foreground">
-            This is a one-time setup. Passwords are hashed and stored encrypted in the container;
-            nothing is sent anywhere else.
+            One-time setup. Stored encrypted in the container.
           </p>
         </CardHeader>
 

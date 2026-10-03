@@ -165,7 +165,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm">Test Replication</h4>
                       <p className="text-xs text-muted-foreground">
-                        This test verifies that multi-master replication is working correctly:
+                        Confirms replication is working:
                       </p>
                       <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
                         <li>Creates a temporary test entry on the first node</li>
@@ -174,7 +174,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
                         <li>Automatically deletes the test entry</li>
                       </ol>
                       <p className="text-xs text-muted-foreground italic">
-                        <strong>Note:</strong> This is a safe, non-destructive test that only creates a temporary entry.
+                        <strong>Note:</strong> Creates a temporary entry, then removes it.
                       </p>
                     </div>
                   </PopoverContent>
@@ -212,7 +212,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
                         <div className="space-y-2">
                           <h4 className="font-semibold text-sm">Other Entries</h4>
                           <p className="text-xs text-muted-foreground">
-                            Entries that are not users, groups, or organizational units. These typically include:
+                            Entries that are neither users, groups, nor OUs:
                           </p>
                           <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
                             <li>Base domain entry (e.g., dc=example,dc=com)</li>
@@ -241,8 +241,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
                         <div className="space-y-2">
                           <h4 className="font-semibold text-sm">Context CSN (Change Sequence Number)</h4>
                           <p className="text-xs text-muted-foreground">
-                            A unique identifier for each change in the LDAP directory. In multi-master replication, 
-                            each node maintains its own CSN to track the last modification timestamp.
+                            Each node's own change counter. A stale CSN means that node is behind.
                           </p>
                           <p className="text-xs text-muted-foreground break-all">
                             <strong>Format:</strong><br/>
@@ -252,7 +251,7 @@ export default function NodeSyncStats({ clusterName }: NodeSyncStatsProps) {
                             Nodes with identical contextCSN values are fully synchronized.
                           </p>
                           <p className="text-xs text-muted-foreground italic">
-                            <strong>Note:</strong> Single-node clusters may not have contextCSN as replication is not enabled.
+                            <strong>Note:</strong> Single-node clusters have no contextCSN; replication is off.
                           </p>
                         </div>
                       </PopoverContent>

@@ -36,7 +36,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             <div>
               <p className="font-semibold text-destructive">Cannot reach the API</p>
               <p className="text-sm text-muted-foreground mt-1">
-                The app could not read its authentication status. Check that the backend is running.
+                Is the backend running?
               </p>
             </div>
           </CardContent>

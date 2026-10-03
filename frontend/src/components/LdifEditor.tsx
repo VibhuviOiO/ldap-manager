@@ -156,7 +156,7 @@ export default function LdifEditor({ clusterName, canValidate, canApply, canExpo
             LDIF Editor
           </h2>
           <p className="text-sm text-muted-foreground">
-            Edit, validate and apply LDIF. Supports add, modify and delete records. Validate is a dry run; Apply writes to the directory.
+            Validate is a dry run. Apply writes to the directory.
           </p>
         </div>
         <div className="flex items-center gap-2">
