@@ -485,11 +485,21 @@ npx playwright test
 
 ## Compatible LDAP Servers
 
-✅ **Tested**: OpenLDAP 2.4+, OpenLDAP 2.6+
+**OpenLDAP only.** This is a design choice, not a limitation waiting to be lifted.
 
-🔄 **Should work** (RFC 4511 compliant): 389 Directory Server, ApacheDS, Active Directory
+| Server | Status |
+| --- | --- |
+| OpenLDAP 2.6.x | supported |
+| OpenLDAP 2.5.x | supported |
+| OpenLDAP 2.4.x | supported |
+| Active Directory | not supported |
+| 389 Directory Server | not supported |
+| ApacheDS | not supported |
 
-**Requirements**: LDAP v3 protocol, RFC 2696 (paged results) support recommended for large directories
+Schema and ACI editing read `cn=config`, which is OpenLDAP's configuration backend and has no
+equivalent elsewhere. Version-specific behaviour will be tightened as issues are reported.
+
+**Requirements**: LDAP v3. RFC 2696 (paged results) is recommended for large directories.
 
 ## Contributing
 
