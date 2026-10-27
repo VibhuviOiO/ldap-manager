@@ -1,0 +1,96 @@
+name: Test
+
+# Until this workflow existed, nothing in CI ran the test suite. CodeQL ran
+# static analysis and the image built on a tag, so a dependency bump could
+# break every test and still show green. Dependabot's proposals were therefore
+# unverifiable, and every update had to be judged by eye.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      # python-ldap is a C extension and builds against these; without them
+      # pip fails at install time, before a single test runs.
+      - name: System libraries for python-ldap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsasl2-dev libldap2-dev libssl-dev
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-test.txt
+
+      - name: Run tests
+        working-directory: backend
+        run: python -m pytest tests/ -q --no-cov
+
+  frontend:
+    name: Frontend (typecheck, build, unit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npx vitest run tests/unit
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory only: a new CVE in a transitive dependency should not block a
+    # code change. It shows in the job list so it is seen, not so it fails you.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: npm audit (production dependencies)
+        working-directory: frontend
+        run: npm audit --omit=dev
