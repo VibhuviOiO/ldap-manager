@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithProviders } from './test-utils'
 import axios from 'axios'
 import ReplicationTopology from '@/components/ReplicationTopology'
 
@@ -64,7 +65,7 @@ describe('ReplicationTopology', () => {
   // 2-node cluster rendered an empty box.
   it('renders a diagram for a 2-node cluster', async () => {
     mockResponses(TWO_NODE_TOPOLOGY, [stat('ldap-a'), stat('ldap-b')], true)
-    const { container } = render(<ReplicationTopology clusterName="acme" />)
+    const { container } = renderWithProviders(<ReplicationTopology clusterName="acme" />)
 
     await waitFor(() => {
       expect(container.querySelector('svg[role="img"]')).toBeTruthy()
@@ -81,7 +82,7 @@ describe('ReplicationTopology', () => {
 
   it('renders all six directions for a 3-node mesh', async () => {
     mockResponses(THREE_NODE_TOPOLOGY, [stat('n1'), stat('n2'), stat('n3')], true)
-    const { container } = render(<ReplicationTopology clusterName="oiocloud" />)
+    const { container } = renderWithProviders(<ReplicationTopology clusterName="oiocloud" />)
 
     await waitFor(() => {
       expect(container.querySelector('svg[role="img"]')).toBeTruthy()
@@ -91,7 +92,7 @@ describe('ReplicationTopology', () => {
 
   it('labels each link with its real RID', async () => {
     mockResponses(TWO_NODE_TOPOLOGY, [stat('ldap-a'), stat('ldap-b')], true)
-    render(<ReplicationTopology clusterName="acme" />)
+    renderWithProviders(<ReplicationTopology clusterName="acme" />)
 
     await waitFor(() => {
       expect(screen.getByText('RID 101')).toBeInTheDocument()
@@ -101,7 +102,7 @@ describe('ReplicationTopology', () => {
 
   it('marks a converged cluster as in sync', async () => {
     mockResponses(TWO_NODE_TOPOLOGY, [stat('ldap-a'), stat('ldap-b')], true)
-    render(<ReplicationTopology clusterName="acme" />)
+    renderWithProviders(<ReplicationTopology clusterName="acme" />)
 
     await waitFor(() => {
       expect(screen.getAllByText('IN SYNC').length).toBe(2)
@@ -119,7 +120,7 @@ describe('ReplicationTopology', () => {
       ],
       false
     )
-    render(<ReplicationTopology clusterName="acme" />)
+    renderWithProviders(<ReplicationTopology clusterName="acme" />)
 
     await waitFor(() => {
       expect(screen.getByText('BEHIND')).toBeInTheDocument()
@@ -134,7 +135,7 @@ describe('ReplicationTopology', () => {
       [stat('ldap-a'), stat('ldap-b', { status: 'unreachable' })],
       false
     )
-    render(<ReplicationTopology clusterName="acme" />)
+    renderWithProviders(<ReplicationTopology clusterName="acme" />)
 
     await waitFor(() => {
       expect(screen.getByText('DOWN')).toBeInTheDocument()
@@ -152,7 +153,7 @@ describe('ReplicationTopology', () => {
       [stat('a'), stat('b')],
       true
     )
-    render(<ReplicationTopology clusterName="standalone" />)
+    renderWithProviders(<ReplicationTopology clusterName="standalone" />)
 
     await waitFor(() => {
       expect(screen.getByText(/none replicate from another/i)).toBeInTheDocument()
@@ -165,7 +166,7 @@ describe('ReplicationTopology', () => {
       [stat('only')],
       true
     )
-    const { container } = render(<ReplicationTopology clusterName="solo" />)
+    const { container } = renderWithProviders(<ReplicationTopology clusterName="solo" />)
 
     await waitFor(() => {
       expect(mockedGet).toHaveBeenCalled()
@@ -175,7 +176,7 @@ describe('ReplicationTopology', () => {
 
   it('surfaces a load failure instead of a blank card', async () => {
     mockedGet.mockRejectedValue(new Error('boom'))
-    render(<ReplicationTopology clusterName="broken" />)
+    renderWithProviders(<ReplicationTopology clusterName="broken" />)
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/could not load/i)
@@ -188,7 +189,7 @@ describe('ReplicationTopology', () => {
       [stat('ldap-a', { total: 1234, users: 900, groups: 12, responseTime: 7 }), stat('ldap-b')],
       true
     )
-    render(<ReplicationTopology clusterName="acme" />)
+    renderWithProviders(<ReplicationTopology clusterName="acme" />)
 
     await waitFor(() => {
       expect(screen.getByText('1234')).toBeInTheDocument()

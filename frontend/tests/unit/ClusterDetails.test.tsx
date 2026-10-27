@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithProviders } from './test-utils'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import ClusterDetails from '@/components/ClusterDetails'
 import * as services from '@/services'
@@ -33,7 +34,7 @@ describe('ClusterDetails', () => {
   })
 
   it('should render component', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/cluster/test']}>
         <Routes>
           <Route path="/cluster/:clusterName" element={<ClusterDetails />} />
@@ -47,7 +48,7 @@ describe('ClusterDetails', () => {
   })
 
   it('should display navigation tabs', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/cluster/test']}>
         <Routes>
           <Route path="/cluster/:clusterName" element={<ClusterDetails />} />
@@ -63,7 +64,7 @@ describe('ClusterDetails', () => {
   })
 
   it('should load cluster data', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/cluster/test']}>
         <Routes>
           <Route path="/cluster/:clusterName" element={<ClusterDetails />} />
