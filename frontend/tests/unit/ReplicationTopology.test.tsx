@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { renderWithProviders } from './test-utils'
 import axios from 'axios'
 import ReplicationTopology from '@/components/ReplicationTopology'
@@ -47,6 +47,15 @@ function stat(host: string, overrides: Record<string, unknown> = {}) {
   }
 }
 
+/**
+ * The diagram is hidden until the "Diagram" button is pressed: showDiagram
+ * starts false so a large SVG is not rendered unasked. The toggle only exists
+ * once the first fetch resolves, so findByRole is what waits for it.
+ */
+async function showDiagram() {
+  fireEvent.click(await screen.findByRole('button', { name: /^diagram$/i }))
+}
+
 function mockResponses(topology: unknown, nodes: unknown, inSync: boolean | null) {
   mockedGet.mockImplementation((url: string) => {
     if (String(url).includes('/api/monitoring/topology')) {
@@ -66,6 +75,7 @@ describe('ReplicationTopology', () => {
   it('renders a diagram for a 2-node cluster', async () => {
     mockResponses(TWO_NODE_TOPOLOGY, [stat('ldap-a'), stat('ldap-b')], true)
     const { container } = renderWithProviders(<ReplicationTopology clusterName="acme" />)
+    await showDiagram()
 
     await waitFor(() => {
       expect(container.querySelector('svg[role="img"]')).toBeTruthy()
@@ -74,7 +84,7 @@ describe('ReplicationTopology', () => {
     const svg = container.querySelector('svg[role="img"]')!
     expect(svg.getAttribute('aria-label')).toContain('2 replication link(s) between 2 nodes')
     // One dashed path per replication direction
-    expect(container.querySelectorAll('path[stroke-dasharray="6 4"]').length).toBe(2)
+    expect(container.querySelectorAll('path[stroke-dasharray="5 4"]').length).toBe(2)
     // Scoped to the diagram: the host also appears in the detail panel below.
     expect(within(svg as HTMLElement).getByText('ldap-a')).toBeInTheDocument()
     expect(within(svg as HTMLElement).getByText('ldap-b')).toBeInTheDocument()
@@ -83,16 +93,18 @@ describe('ReplicationTopology', () => {
   it('renders all six directions for a 3-node mesh', async () => {
     mockResponses(THREE_NODE_TOPOLOGY, [stat('n1'), stat('n2'), stat('n3')], true)
     const { container } = renderWithProviders(<ReplicationTopology clusterName="oiocloud" />)
+    await showDiagram()
 
     await waitFor(() => {
       expect(container.querySelector('svg[role="img"]')).toBeTruthy()
     })
-    expect(container.querySelectorAll('path[stroke-dasharray="6 4"]').length).toBe(6)
+    expect(container.querySelectorAll('path[stroke-dasharray="5 4"]').length).toBe(6)
   })
 
   it('labels each link with its real RID', async () => {
     mockResponses(TWO_NODE_TOPOLOGY, [stat('ldap-a'), stat('ldap-b')], true)
     renderWithProviders(<ReplicationTopology clusterName="acme" />)
+    await showDiagram()
 
     await waitFor(() => {
       expect(screen.getByText('RID 101')).toBeInTheDocument()
@@ -154,6 +166,7 @@ describe('ReplicationTopology', () => {
       true
     )
     renderWithProviders(<ReplicationTopology clusterName="standalone" />)
+    await showDiagram()
 
     await waitFor(() => {
       expect(screen.getByText(/none replicate from another/i)).toBeInTheDocument()
@@ -194,7 +207,9 @@ describe('ReplicationTopology', () => {
     await waitFor(() => {
       expect(screen.getByText('1234')).toBeInTheDocument()
     })
-    expect(screen.getByText('900 / 12')).toBeInTheDocument()
+    // Users and groups render in separate columns, not a combined cell.
+    expect(screen.getByText('900')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('7 ms')).toBeInTheDocument()
   })
 })

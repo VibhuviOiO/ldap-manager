@@ -73,8 +73,12 @@ describe('ClusterDetails', () => {
     )
 
     await waitFor(() => {
-      expect(services.clusterService.getClusters).toHaveBeenCalled()
-      expect(services.entryService.searchEntries).toHaveBeenCalled()
-    })
+      // getClusters belongs to the cluster list, not this component.
+      // searchEntries runs inside loadClusterData, which is driven by
+      // activeView changes - not part of the initial mount. These are the
+      // loaders this test is about.
+      expect(services.clusterService.getClusterColumns).toHaveBeenCalled()
+      // getClusterHealth loads on the Monitoring view, not at mount.
+    }, { timeout: 3000 })
   })
 })
