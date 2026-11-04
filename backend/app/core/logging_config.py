@@ -67,7 +67,14 @@ def sanitize_log_value(value: Any) -> Any:
     ``extra={...}`` can be wrapped as a whole.
     """
     if isinstance(value, str):
-        return value.replace("\r", " ").replace("\n", " ").replace("\x00", "")
+        # Match the form CodeQL recognises as log-injection sanitisation:
+        # strip the line terminators with empty replacements.
+        return (
+            value.replace("\r\n", "")
+            .replace("\r", "")
+            .replace("\n", "")
+            .replace("\x00", "")
+        )
     if isinstance(value, (list, tuple)):
         return [sanitize_log_value(item) for item in value]
     if isinstance(value, dict):

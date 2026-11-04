@@ -160,6 +160,12 @@ IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
+    # Files that may be served directly from the bundle root (favicon, logo,
+    # robots.txt, ...). Lookups go through this mapping by *name*, so request
+    # input never becomes a filesystem path and cannot traverse out of it.
+    root_files = {
+        p.name: p for p in static_dir.iterdir() if p.is_file() and p.name != "index.html"
+    }
 
     class ImmutableStaticFiles(StaticFiles):
         """Hashed assets are content-addressed, so let browsers keep them."""
@@ -182,19 +188,11 @@ if static_dir.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa_routes(full_path: str):
-        # Only ever serve a real file that resolves inside static_dir. A bare
-        # join would let "/../.." (or an absolute path) escape the directory.
-        root = static_dir.resolve()
-        try:
-            file_path = (root / full_path).resolve()
-            file_path.relative_to(root)
-        except (OSError, ValueError):
-            return FileResponse(str(root / "index.html"), headers=NO_CACHE)
-        if file_path.is_file():
-            # Hashed asset -> cache hard; anything else -> revalidate.
-            headers = IMMUTABLE if full_path.startswith("assets/") else NO_CACHE
-            return FileResponse(str(file_path), headers=headers)
-        return FileResponse(str(root / "index.html"), headers=NO_CACHE)
+        # Serve a known root file if the name matches exactly; otherwise hand
+        # the route to the SPA. No path is ever built from `full_path`.
+        if full_path in root_files:
+            return FileResponse(str(root_files[full_path]), headers=NO_CACHE)
+        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
 else:
     @app.get("/")
     def root():
