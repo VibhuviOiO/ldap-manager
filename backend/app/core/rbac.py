@@ -34,6 +34,7 @@ from app.core.auth import (
     load_auth_settings,
 )
 from app.core.secrets import verify_token
+from app.core.logging_config import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def resolve_identity(request: Request) -> Identity:
                 method="session",
             )
         except ValueError:
-            logger.warning("Session carried an unknown role: %r", payload.get("role"))
+            logger.warning("Session carried an unknown role: %r", sanitize_log_value(payload.get("role")))
 
     return anonymous_identity()
 

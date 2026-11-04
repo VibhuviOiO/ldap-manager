@@ -5,8 +5,10 @@ from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
 from app.core.credentials import describe, resolve_password
 from app.core.node_selector import NodeSelector, OperationType
 import ldap
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.get("/list")
 async def list_clusters():
@@ -118,14 +120,16 @@ async def check_cluster_health(cluster_name: str):
                 "message": "Invalid credentials. Please check bind DN and password."
             }
         except Exception as e:
+            logger.warning("Health check connection failed for %s:%s: %s", host, port, e)
             return {
                 "status": "error",
-                "message": f"Connection failed: {str(e)}"
+                "message": "Connection failed. Check the server logs for details."
             }
     except Exception as e:
+        logger.warning("Health check failed: %s", e)
         return {
             "status": "error",
-            "message": f"Health check failed: {str(e)}"
+            "message": "Health check failed. Check the server logs for details."
         }
 
 @router.get("/form/{cluster_name}")

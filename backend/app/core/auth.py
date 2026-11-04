@@ -25,6 +25,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from app.core.logging_config import sanitize_log_value
+
 logger = logging.getLogger(__name__)
 
 MIN_PASSWORD_LENGTH = 8
@@ -248,6 +250,7 @@ def _groups_for_user(
     from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
     from app.core.node_selector import NodeSelector, OperationType
     import ldap as _ldap
+    import ldap.filter
 
     host, port = NodeSelector.select_node(cluster, OperationType.READ)
     client = LDAPClient(
@@ -274,9 +277,10 @@ def _groups_for_user(
         if not groups:
             base = settings.ldap.user_base_dn or cluster.base_dn or ""
             if base:
-                clauses = [f"(member={user_dn})", f"(uniqueMember={user_dn})"]
+                escaped_dn = _ldap.filter.escape_filter_chars(user_dn)
+                clauses = [f"(member={escaped_dn})", f"(uniqueMember={escaped_dn})"]
                 if username:
-                    clauses.append(f"(memberUid={username})")
+                    clauses.append(f"(memberUid={_ldap.filter.escape_filter_chars(username)})")
                 rows, _, _ = client.search(
                     base,
                     "(|" + "".join(clauses) + ")",
@@ -289,7 +293,7 @@ def _groups_for_user(
                         groups.append(dn if isinstance(dn, str) else str(dn))
         return groups
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not read groups for %s: %s", user_dn, exc)
+        logger.warning("Could not read groups for %s: %s", sanitize_log_value(user_dn), exc)
         return []
     finally:
         try:
@@ -308,6 +312,7 @@ def authenticate_ldap(username: str, password: str, settings: AuthSettings) -> O
     from app.core.config import load_config
     from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
     from app.core.node_selector import NodeSelector, OperationType
+    import ldap as _ldap
 
     ld = settings.ldap
     if not ld.cluster:
@@ -319,11 +324,14 @@ def authenticate_ldap(username: str, password: str, settings: AuthSettings) -> O
         logger.error("auth.ldap.cluster %r is not one of the configured clusters", ld.cluster)
         return None
 
+    # Escape the username as an RDN value: a bare "," or "=" would otherwise
+    # let the login form choose a DN outside the configured subtree.
+    safe_username = _ldap.dn.escape_dn_chars(username)
     if ld.user_dn_template:
-        user_dn = ld.user_dn_template.replace("{username}", username)
+        user_dn = ld.user_dn_template.replace("{username}", safe_username)
     else:
         base = ld.user_base_dn or cluster.base_dn or ""
-        user_dn = f"uid={username},{base}" if base else ""
+        user_dn = f"uid={safe_username},{base}" if base else ""
 
     if not user_dn:
         logger.error("Cannot build a user DN - set auth.ldap.user_dn_template")
@@ -344,7 +352,7 @@ def authenticate_ldap(username: str, password: str, settings: AuthSettings) -> O
         probe.connect()
         probe.disconnect()
     except Exception as exc:  # noqa: BLE001 - a failed bind is simply a failed login
-        logger.info("LDAP bind failed for %s: %s", user_dn, exc)
+        logger.info("LDAP bind failed for %s: %s", sanitize_log_value(user_dn), exc)
         return None
 
     role = ld.default_role

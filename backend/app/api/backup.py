@@ -29,6 +29,7 @@ from app.core.credentials import resolve_password
 from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
 from app.core.node_selector import NodeSelector, OperationType
 from app.core.rbac import require_admin
+from app.core.logging_config import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ async def download_backup(
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
-        logger.error("Backup of cluster '%s' failed: %s", cluster_name, exc)
+        logger.error("Backup of cluster '%s' failed: %s", sanitize_log_value(cluster_name), exc)
         raise HTTPException(status_code=502, detail=f"Could not export: {exc}")
     finally:
         try:
@@ -137,7 +138,7 @@ async def download_backup(
 
     payload = _to_ldif(entries)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    logger.info("Exported %d entries from cluster '%s'", len(entries), cluster_name)
+    logger.info("Exported %d entries from cluster '%s'", len(entries), sanitize_log_value(cluster_name))
 
     return Response(
         content=payload,

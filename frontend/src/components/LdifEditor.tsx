@@ -1,4 +1,5 @@
 import { useConfirm } from './ui/confirm-dialog'
+import DOMPurify from 'dompurify'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, FileCode2, Loader2, AlertTriangle, XCircle } from 'lucide-react'
 import { Button } from './ui/button'
@@ -69,7 +70,17 @@ export default function LdifEditor({ clusterName, canValidate, canApply, canExpo
   const preRef = useRef<HTMLPreElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const highlighted = useMemo(() => highlightLdif(value), [value])
+  // highlightLdif already escapes the text, but pass the generated markup
+  // through DOMPurify as well: the result is injected as HTML, so it must
+  // never carry anything beyond the <span class> highlighting structure.
+  const highlighted = useMemo(
+    () =>
+      DOMPurify.sanitize(highlightLdif(value) + '\n', {
+        ALLOWED_TAGS: ['span'],
+        ALLOWED_ATTR: ['class'],
+      }),
+    [value]
+  )
 
 
   // A draft parked by "Create with LDIF" replaces the sample on arrival.
@@ -201,7 +212,7 @@ export default function LdifEditor({ clusterName, canValidate, canApply, canExpo
           ref={preRef}
           aria-hidden="true"
           className="absolute inset-0 m-0 p-3 overflow-hidden whitespace-pre-wrap break-words pointer-events-none font-mono text-[13px] leading-6"
-          dangerouslySetInnerHTML={{ __html: highlighted + '\n' }}
+          dangerouslySetInnerHTML={{ __html: highlighted }}
         />
         <textarea
           value={value}

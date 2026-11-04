@@ -63,7 +63,7 @@ def _get_fernet() -> Fernet:
             key = Fernet.generate_key()
             key_file.write_bytes(key)
             os.chmod(key_file, 0o600)
-            logger.info("Generated user-store encryption key at %s", key_file)
+            logger.info("Generated user-store encryption key")
         _fernet = Fernet(key)
     return _fernet
 
@@ -85,7 +85,7 @@ def get_signing_key() -> bytes:
     if not SESSION_KEY_FILE.exists():
         SESSION_KEY_FILE.write_bytes(_secrets.token_bytes(32))
         os.chmod(SESSION_KEY_FILE, 0o600)
-        logger.info("Generated session signing key at %s", SESSION_KEY_FILE)
+        logger.info("Generated session signing key")
     return SESSION_KEY_FILE.read_bytes()
 
 

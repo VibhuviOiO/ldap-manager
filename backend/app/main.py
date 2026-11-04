@@ -160,6 +160,12 @@ IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
+    # Files that may be served directly from the bundle root (favicon, logo,
+    # robots.txt, ...). Lookups go through this mapping by *name*, so request
+    # input never becomes a filesystem path and cannot traverse out of it.
+    root_files = {
+        p.name: p for p in static_dir.iterdir() if p.is_file() and p.name != "index.html"
+    }
 
     class ImmutableStaticFiles(StaticFiles):
         """Hashed assets are content-addressed, so let browsers keep them."""
@@ -182,11 +188,10 @@ if static_dir.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa_routes(full_path: str):
-        file_path = static_dir / full_path
-        if file_path.exists() and file_path.is_file():
-            # Hashed asset -> cache hard; anything else -> revalidate.
-            headers = IMMUTABLE if full_path.startswith("assets/") else NO_CACHE
-            return FileResponse(str(file_path), headers=headers)
+        # Serve a known root file if the name matches exactly; otherwise hand
+        # the route to the SPA. No path is ever built from `full_path`.
+        if full_path in root_files:
+            return FileResponse(str(root_files[full_path]), headers=NO_CACHE)
         return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
 else:
     @app.get("/")
@@ -221,10 +226,11 @@ async def health_check():
             "clusters_count": len(clusters)
         }
     except Exception as e:
+        logger.error("Health check: config load failed: %s", e)
         health["status"] = "unhealthy"
         health["checks"]["config"] = {
             "status": "failed",
-            "error": str(e)
+            "error": "configuration could not be loaded",
         }
         return JSONResponse(content=health, status_code=503)
 
@@ -236,10 +242,11 @@ async def health_check():
             "pool_size": pool_stats["pool_size"]
         }
     except Exception as e:
+        logger.error("Health check: connection pool failed: %s", e)
         health["status"] = "degraded"
         health["checks"]["connection_pool"] = {
             "status": "failed",
-            "error": str(e)
+            "error": "connection pool unavailable",
         }
 
     # Check LDAP connectivity (first cluster only, if password is cached)
@@ -270,10 +277,11 @@ async def health_check():
                     "reason": "no_cached_password"
                 }
     except Exception as e:
+        logger.error("Health check: LDAP connectivity failed: %s", e)
         health["status"] = "degraded"
         health["checks"]["ldap"] = {
             "status": "failed",
-            "error": str(e)
+            "error": "LDAP connectivity check failed",
         }
 
     status_code = 200 if health["status"] == "healthy" else 503

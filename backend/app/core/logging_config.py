@@ -57,6 +57,31 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_object)
 
 
+def sanitize_log_value(value: Any) -> Any:
+    """Strip control characters from a value before it reaches a log sink.
+
+    The JSON formatter already escapes these (``json.dumps``), but the plain
+    text fallback interpolates the message straight into the line. Removing
+    CR/LF/NUL here means a user-supplied DN or username cannot forge an extra
+    log entry in either mode. Containers are sanitised recursively so that
+    ``extra={...}`` can be wrapped as a whole.
+    """
+    if isinstance(value, str):
+        # Match the form CodeQL recognises as log-injection sanitisation:
+        # strip the line terminators with empty replacements.
+        return (
+            value.replace("\r\n", "")
+            .replace("\r", "")
+            .replace("\n", "")
+            .replace("\x00", "")
+        )
+    if isinstance(value, (list, tuple)):
+        return [sanitize_log_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: sanitize_log_value(item) for key, item in value.items()}
+    return value
+
+
 def setup_logging(log_level: str = "INFO", json_format: bool = True):
     """
     Configure application logging with structured output.
