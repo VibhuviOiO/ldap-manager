@@ -22,6 +22,7 @@ from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
 from app.core.node_selector import NodeSelector, OperationType
 from app.core.auth import Identity, Role
 from app.core.rbac import require_readwrite
+from app.core.logging_config import sanitize_log_value
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -206,18 +207,20 @@ async def import_ldif(req: LdifImportRequest, identity: Identity = Depends(requi
                 client.add(dn, record.get("attributes", {}))
                 added += 1
         except Exception as exc:  # noqa: BLE001
-            errors.append({"dn": dn, "changetype": changetype, "error": str(exc)})
+            # Keep server internals out of the response; the detail goes to the log.
+            logger.warning("LDIF record failed for %s (%s): %s", sanitize_log_value(dn), sanitize_log_value(changetype), exc)
+            errors.append({"dn": dn, "changetype": changetype, "error": "operation failed"})
 
     client.disconnect()
     logger.info(
         "LDIF import",
-        extra={
+        extra=sanitize_log_value({
             "cluster": req.cluster_name,
             "added": added,
             "modified": modified,
             "deleted": deleted,
             "failed": len(errors),
-        },
+        }),
     )
     return {
         "status": "success" if not errors else "partial",

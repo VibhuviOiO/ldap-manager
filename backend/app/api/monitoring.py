@@ -4,12 +4,14 @@ from app.core.config import load_config
 from app.core.credentials import resolve_password
 from app.core.node_selector import NodeSelector
 import ldap
+import logging
 import time
 import random
 
 from app.core.rbac import require_readwrite
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.get("/nodes")
 async def get_node_sync_stats(cluster: str = Query(...)):
@@ -249,8 +251,9 @@ async def test_replication(cluster: str = Query(...)):
                 "description": "Replication health check"
             })
         except Exception as e:
+            logger.warning("Replication test entry creation failed: %s", e)
             client.disconnect()
-            return {"success": False, "message": f"Failed to create test entry: {str(e)}"}
+            return {"success": False, "message": "Failed to create test entry. Check the server logs for details."}
         
         client.disconnect()
         

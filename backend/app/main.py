@@ -182,12 +182,19 @@ if static_dir.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa_routes(full_path: str):
-        file_path = static_dir / full_path
-        if file_path.exists() and file_path.is_file():
+        # Only ever serve a real file that resolves inside static_dir. A bare
+        # join would let "/../.." (or an absolute path) escape the directory.
+        root = static_dir.resolve()
+        try:
+            file_path = (root / full_path).resolve()
+            file_path.relative_to(root)
+        except (OSError, ValueError):
+            return FileResponse(str(root / "index.html"), headers=NO_CACHE)
+        if file_path.is_file():
             # Hashed asset -> cache hard; anything else -> revalidate.
             headers = IMMUTABLE if full_path.startswith("assets/") else NO_CACHE
             return FileResponse(str(file_path), headers=headers)
-        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
+        return FileResponse(str(root / "index.html"), headers=NO_CACHE)
 else:
     @app.get("/")
     def root():
@@ -221,10 +228,11 @@ async def health_check():
             "clusters_count": len(clusters)
         }
     except Exception as e:
+        logger.error("Health check: config load failed: %s", e)
         health["status"] = "unhealthy"
         health["checks"]["config"] = {
             "status": "failed",
-            "error": str(e)
+            "error": "configuration could not be loaded",
         }
         return JSONResponse(content=health, status_code=503)
 
@@ -236,10 +244,11 @@ async def health_check():
             "pool_size": pool_stats["pool_size"]
         }
     except Exception as e:
+        logger.error("Health check: connection pool failed: %s", e)
         health["status"] = "degraded"
         health["checks"]["connection_pool"] = {
             "status": "failed",
-            "error": str(e)
+            "error": "connection pool unavailable",
         }
 
     # Check LDAP connectivity (first cluster only, if password is cached)
@@ -270,10 +279,11 @@ async def health_check():
                     "reason": "no_cached_password"
                 }
     except Exception as e:
+        logger.error("Health check: LDAP connectivity failed: %s", e)
         health["status"] = "degraded"
         health["checks"]["ldap"] = {
             "status": "failed",
-            "error": str(e)
+            "error": "LDAP connectivity check failed",
         }
 
     status_code = 200 if health["status"] == "healthy" else 503

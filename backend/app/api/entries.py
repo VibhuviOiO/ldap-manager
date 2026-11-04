@@ -6,6 +6,7 @@ from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
 from app.core.config import load_config
 from app.core.credentials import resolve_password
 from app.core.node_selector import NodeSelector, OperationType
+from app.core.logging_config import sanitize_log_value
 import ldap
 import ldap.filter
 import logging
@@ -74,15 +75,6 @@ def _write_client(cluster_name: str):
     client = LDAPClient(config)
     client.connect()
     return cluster_config, client
-
-class SearchRequest(BaseModel):
-    host: str
-    port: int
-    bind_dn: str
-    bind_password: str
-    base_dn: str
-    filter: str = "(objectClass=*)"
-    attributes: Optional[List[str]] = None
 
 class EntryCreate(BaseModel):
     host: str
@@ -390,26 +382,6 @@ async def search_by_cluster(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/search")
-async def search_entries(req: SearchRequest):
-    try:
-        config = LDAPConfig(
-            host=req.host,
-            port=req.port,
-            bind_dn=req.bind_dn,
-            bind_password=req.bind_password,
-            base_dn=req.base_dn
-        )
-        client = LDAPClient(config)
-        client.connect()
-        results = client.search(req.base_dn, req.filter, attrs=req.attributes)
-        client.disconnect()
-        return {"entries": results, "count": len(results)}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
 class EntryCreateRequest(BaseModel):
     cluster_name: str
     dn: str
@@ -496,12 +468,12 @@ async def create_entry(req: EntryCreateRequest):
         # Audit log
         logger.info(
             "LDAP entry created",
-            extra={
+            extra=sanitize_log_value({
                 "cluster": req.cluster_name,
                 "dn": req.dn,
                 "operation": "CREATE",
                 "object_classes": req.attributes.get("objectClass", [])
-            }
+            })
         )
 
         return {"status": "success", "dn": req.dn}
@@ -565,12 +537,12 @@ async def update_entry(req: EntryUpdateRequest):
         # Audit log
         logger.info(
             "LDAP entry updated",
-            extra={
+            extra=sanitize_log_value({
                 "cluster": req.cluster_name,
                 "dn": req.dn,
                 "operation": "UPDATE",
                 "modified_attributes": list(req.modifications.keys())
-            }
+            })
         )
 
         return {"status": "success", "dn": req.dn}
@@ -617,11 +589,11 @@ async def delete_entry(
         # Audit log
         logger.warning(
             "LDAP entry deleted",
-            extra={
+            extra=sanitize_log_value({
                 "cluster": cluster_name,
                 "dn": dn,
                 "operation": "DELETE"
-            }
+            })
         )
 
         return {"status": "success", "dn": dn}
@@ -819,12 +791,12 @@ async def bulk_update(req: BulkUpdateRequest):
 
         logger.info(
             "Bulk update",
-            extra={
+            extra=sanitize_log_value({
                 "cluster": req.cluster_name,
                 "succeeded": len(succeeded),
                 "failed": len(errors),
                 "attributes": list(req.modifications.keys()),
-            },
+            }),
         )
         return {
             "status": "success" if not errors else "partial",
@@ -860,13 +832,13 @@ async def bulk_group(req: BulkGroupRequest):
         client.disconnect()
 
         logger.info(
-            "Bulk group %s", req.action,
-            extra={
+            "Bulk group %s", sanitize_log_value(req.action),
+            extra=sanitize_log_value({
                 "cluster": req.cluster_name,
                 "group": req.group_dn,
                 "succeeded": len(succeeded),
                 "failed": len(errors),
-            },
+            }),
         )
         return {
             "status": "success" if not errors else "partial",
@@ -898,7 +870,7 @@ async def bulk_delete(req: BulkDeleteRequest):
 
         logger.warning(
             "Bulk delete",
-            extra={"cluster": req.cluster_name, "succeeded": len(succeeded), "failed": len(errors)},
+            extra=sanitize_log_value({"cluster": req.cluster_name, "succeeded": len(succeeded), "failed": len(errors)}),
         )
         return {
             "status": "success" if not errors else "partial",

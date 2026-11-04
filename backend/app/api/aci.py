@@ -20,6 +20,7 @@ from app.core.credentials import config_is_configured, resolve_config_password
 from app.core.ldap_client import LDAPClient, LDAPConfig, tls_kwargs
 from app.core.node_selector import NodeSelector, OperationType
 from app.core.rbac import require_admin, require_readonly
+from app.core.logging_config import sanitize_log_value
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -152,7 +153,7 @@ async def add_access_rule(cluster: str, payload: AccessRuleInput):
     finally:
         client.disconnect()
 
-    logger.warning("olcAccess rule added to %s (%s)", payload.database_dn, rule)
+    logger.warning("olcAccess rule added to %s (%s)", sanitize_log_value(payload.database_dn), sanitize_log_value(rule))
     return {"status": "created", "database_dn": payload.database_dn, "rule": rule}
 
 
@@ -182,5 +183,5 @@ async def remove_access_rule(
     finally:
         client.disconnect()
 
-    logger.warning("olcAccess rule removed from %s (index %s): %s", database_dn, index, removed)
+    logger.warning("olcAccess rule removed from %s (index %s): %s", sanitize_log_value(database_dn), index, sanitize_log_value(removed))
     return {"status": "deleted", "database_dn": database_dn, "index": index, "rule": removed}
