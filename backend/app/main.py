@@ -150,53 +150,9 @@ async def shutdown_event():
 
 # Serve static files
 #
-# index.html must always be revalidated: it is the file that names the current
-# content-hashed bundle. Without Cache-Control a browser applies heuristic
-# caching to it, keeps an old copy, and the user silently runs stale JavaScript
-# (the classic "I rebuilt it but the UI did not change").
-NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
-# Hashed filenames are content-addressed, so they can be cached hard.
-IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
-
-static_dir = Path(__file__).parent / "static"
-if static_dir.exists():
-    # Files that may be served directly from the bundle root (favicon, logo,
-    # robots.txt, ...). Lookups go through this mapping by *name*, so request
-    # input never becomes a filesystem path and cannot traverse out of it.
-    root_files = {
-        p.name: p for p in static_dir.iterdir() if p.is_file() and p.name != "index.html"
-    }
-
-    class ImmutableStaticFiles(StaticFiles):
-        """Hashed assets are content-addressed, so let browsers keep them."""
-
-        async def get_response(self, path, scope):
-            response = await super().get_response(path, scope)
-            if response.status_code == 200:
-                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-            return response
-
-    app.mount(
-        "/assets",
-        ImmutableStaticFiles(directory=str(static_dir / "assets")),
-        name="assets",
-    )
-
-    @app.get("/")
-    async def serve_spa():
-        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
-
-    @app.get("/{full_path:path}")
-    async def serve_spa_routes(full_path: str):
-        # Serve a known root file if the name matches exactly; otherwise hand
-        # the route to the SPA. No path is ever built from `full_path`.
-        if full_path in root_files:
-            return FileResponse(str(root_files[full_path]), headers=NO_CACHE)
-        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
-else:
-    @app.get("/")
-    def root():
-        return {"message": "LDAP Management API", "version": "1.0.0", "context_path": CONTEXT_PATH}
+# Static serving is registered at the END of this module: the SPA catch-all
+# matches every path, so registering it last is what lets /health and the API
+# routes take precedence. See the bottom of the file.
 
 @app.get("/health")
 async def health_check():
@@ -286,3 +242,54 @@ async def health_check():
 
     status_code = 200 if health["status"] == "healthy" else 503
     return JSONResponse(content=health, status_code=status_code)
+
+
+# --- Static SPA (registered last so it cannot shadow /health or the API) -----
+#
+# index.html must always be revalidated: it is the file that names the current
+# content-hashed bundle. Without Cache-Control a browser applies heuristic
+# caching to it, keeps an old copy, and the user silently runs stale JavaScript
+# (the classic "I rebuilt it but the UI did not change").
+NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+# Hashed filenames are content-addressed, so they can be cached hard.
+IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    # Files that may be served directly from the bundle root (favicon, logo,
+    # robots.txt, ...). Lookups go through this mapping by *name*, so request
+    # input never becomes a filesystem path and cannot traverse out of it.
+    root_files = {
+        p.name: p for p in static_dir.iterdir() if p.is_file() and p.name != "index.html"
+    }
+
+    class ImmutableStaticFiles(StaticFiles):
+        """Hashed assets are content-addressed, so let browsers keep them."""
+
+        async def get_response(self, path, scope):
+            response = await super().get_response(path, scope)
+            if response.status_code == 200:
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
+
+    app.mount(
+        "/assets",
+        ImmutableStaticFiles(directory=str(static_dir / "assets")),
+        name="assets",
+    )
+
+    @app.get("/")
+    async def serve_spa():
+        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
+
+    @app.get("/{full_path:path}")
+    async def serve_spa_routes(full_path: str):
+        # Serve a known root file if the name matches exactly; otherwise hand
+        # the route to the SPA. No path is ever built from `full_path`.
+        if full_path in root_files:
+            return FileResponse(str(root_files[full_path]), headers=NO_CACHE)
+        return FileResponse(str(static_dir / "index.html"), headers=NO_CACHE)
+else:
+    @app.get("/")
+    def root():
+        return {"message": "LDAP Management API", "version": "1.0.0", "context_path": CONTEXT_PATH}
