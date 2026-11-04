@@ -31,7 +31,7 @@ ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",") i
 app = FastAPI(
     title="LDAP Management API",
     description="RESTful API for OpenLDAP management",
-    version="1.0.0",
+    version="1.2.0",
     root_path=CONTEXT_PATH
 )
 
@@ -114,7 +114,7 @@ async def startup_event():
     logger.info(
         "LDAP Manager started",
         extra={
-            "version": "1.0.0",
+            "version": "1.2.0",
             "context_path": CONTEXT_PATH,
             "allowed_origins": ALLOWED_ORIGINS,
             "log_level": LOG_LEVEL
@@ -169,7 +169,7 @@ async def health_check():
     health = {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat() + "Z",
-        "version": "1.0.0",
+        "version": "1.2.0",
         "context_path": CONTEXT_PATH,
         "checks": {}
     }
@@ -292,4 +292,4 @@ if static_dir.exists():
 else:
     @app.get("/")
     def root():
-        return {"message": "LDAP Management API", "version": "1.0.0", "context_path": CONTEXT_PATH}
+        return {"message": "LDAP Management API", "version": "1.2.0", "context_path": CONTEXT_PATH}

@@ -70,7 +70,7 @@ A few properties are deliberate. Please don't report them as vulnerabilities:
 Every image is built from source in GitHub Actions and published to Docker Hub and GHCR:
 
 ```bash
-docker pull vibhuvioio/ldap-manager:1.1.0
-docker run --rm --entrypoint sh vibhuvioio/ldap-manager:1.1.0 -c 'ls /app/app/api/'
+docker pull vibhuvioio/ldap-manager:1.2.0
+docker run --rm --entrypoint sh vibhuvioio/ldap-manager:1.2.0 -c 'ls /app/app/api/'
 ```
 
